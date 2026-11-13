@@ -53,7 +53,7 @@ inquiry.hidden = false;
 inquiry.addEventListener('submit', (event) => {
   event.preventDefault();
   const fields = new FormData(inquiry);
-  const content = [
+  const body = [
     'Mitch Harsch Tattoo Inquiry',
     'Name: ' + fields.get('name').trim(),
     'Email: ' + fields.get('email').trim(),
@@ -61,14 +61,11 @@ inquiry.addEventListener('submit', (event) => {
     'Tattoo idea',
     fields.get('idea').trim()
   ].join('\n');
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
-  const download = document.createElement('a');
-  download.href = url;
-  download.download = 'mitch-harsch-tattoo-inquiry.txt';
-  document.body.append(download);
-  download.click();
-  download.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10000);
-  status.textContent = 'Your inquiry file is ready in your downloads.';
+  const params = new URLSearchParams({
+    subject: 'Tattoo inquiry from ' + fields.get('name').trim(),
+    body
+  });
+  window.location.href = 'mailto:mitchharsch@gmail.com?' + params.toString();
+  status.textContent = 'Your email app should open with the inquiry ready to review and send.';
 });
 
