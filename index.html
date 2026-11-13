@@ -40,19 +40,30 @@
       <div><p class="kicker">The artist</p><h2>Behind the ink</h2><p class="bio">Mitch Harsch</p><p class="muted">Artist biography coming soon.</p><p class="location">Studio location to be announced</p></div>
     </div>
   </section>
+  <section class="wrap section instagram" id="instagram" aria-labelledby="instagram-title">
+    <div class="section-head">
+      <div><p class="kicker">Instagram</p><h2 id="instagram-title">From the studio</h2></div>
+      <a class="outline" href="https://www.instagram.com/mitchharsch/" target="_blank" rel="noopener noreferrer">Follow on Instagram <span aria-hidden="true">↗</span></a>
+    </div>
+    <!-- Add the public Instagram feed widget embed code inside #instagram-feed. -->
+    <div id="instagram-feed" class="instagram-feed" role="region" aria-label="Public Instagram feed widget placeholder">
+      <p class="instagram-feed-placeholder">Public Instagram feed widget goes here. Latest posts will appear in a grid when connected.</p>
+    </div>
+  </section>
   <section class="wrap section split booking" id="booking">
     <div><p class="kicker">Custom tattoos</p><h2>Start an inquiry</h2><p class="muted">Describe the piece you have in mind, where it will go, and its approximate size. Send your inquiry by email.</p><p class="location">Email inquiries to <a href="mailto:mitchharsch@gmail.com">mitchharsch@gmail.com</a></p></div>
-    <form id="inquiry" hidden>
+    <form id="inquiry" action="https://formsubmit.co/mitchharsch@gmail.com" method="POST" hidden>
+      <input type="hidden" name="_subject" value="New tattoo inquiry">
+      <input type="hidden" name="_template" value="table">
       <label for="name">Name</label><input id="name" name="name" autocomplete="name" required>
-      <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required>
-      <label for="idea">Tattoo idea</label><textarea id="idea" name="idea" rows="5" placeholder="Subject, placement, and approximate size" required></textarea>
-      <button class="solid" type="submit">Email inquiry <span aria-hidden="true">↗</span></button>
-      <p class="muted form-note">Opens a draft in your email app so you can review and send it.</p>
-      <p id="status" role="status"></p>
+      <label for="email">Email</label><input id="email" name="_replyto" type="email" autocomplete="email" required>
+      <label for="idea">Tattoo idea</label><textarea id="idea" name="message" rows="5" placeholder="Subject, placement, and approximate size" required></textarea>
+      <button class="solid" type="submit">Send inquiry <span aria-hidden="true">↗</span></button>
+      <p class="muted form-note">Sent via FormSubmit to Mitch Harsch. FormSubmit processes your details to deliver this email.</p>
     </form>
   </section>
 </main>
-<footer><div class="wrap footer"><a class="brand" href="#top"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a><span class="muted">Instagram · Social link coming soon</span><a href="#top">Back to top ↑</a></div></footer>
+<footer><div class="wrap footer"><a class="brand" href="#top"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a><a href="https://www.instagram.com/mitchharsch/" target="_blank" rel="noopener noreferrer">Instagram ↗</a><a href="#top">Back to top ↑</a></div></footer>
 <dialog id="lightbox" aria-labelledby="art-title">
   <div class="dialog-head"><h2 id="art-title"></h2><form method="dialog"><button class="outline" autofocus>Close <span aria-hidden="true">×</span></button></form></div>
   <div class="art-link"><img id="art-image" alt=""></div>

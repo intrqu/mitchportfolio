@@ -48,24 +48,5 @@ for (const link of document.querySelectorAll('.gallery .art-link')) {
 lightbox.addEventListener('close', () => activeArtwork?.focus());
 
 const inquiry = document.querySelector('#inquiry');
-const status = document.querySelector('#status');
 inquiry.hidden = false;
-inquiry.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const fields = new FormData(inquiry);
-  const body = [
-    'Mitch Harsch Tattoo Inquiry',
-    'Name: ' + fields.get('name').trim(),
-    'Email: ' + fields.get('email').trim(),
-    '',
-    'Tattoo idea',
-    fields.get('idea').trim()
-  ].join('\n');
-  const params = new URLSearchParams({
-    subject: 'Tattoo inquiry from ' + fields.get('name').trim(),
-    body
-  });
-  window.location.href = 'mailto:mitchharsch@gmail.com?' + params.toString();
-  status.textContent = 'Your email app should open with the inquiry ready to review and send.';
-});
 

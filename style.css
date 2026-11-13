@@ -38,6 +38,8 @@ h1{font-size:clamp(5rem,12vw,12rem);line-height:.74;letter-spacing:-.065em;margi
 h2{margin:0;font-size:clamp(3.2rem,7vw,6rem);line-height:.95;letter-spacing:-.045em}
 .muted{color:var(--muted)}
 .gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(.85rem,2vw,1.7rem)}
+.instagram-feed{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(.85rem,2vw,1.7rem);min-width:0}
+.instagram-feed-placeholder{grid-column:1/-1;display:grid;place-items:center;min-height:12rem;margin:0;padding:2rem;text-align:center;border:1px dashed var(--edge);color:var(--muted)}
 figure{margin:0}
 .art-link{display:block;position:relative;aspect-ratio:1/1.38;overflow:hidden;background:#211814;border:1px solid var(--edge)}
 .art-link img{display:block;width:100%;height:100%;object-fit:cover}
@@ -77,6 +79,7 @@ dialog p{margin:.55rem 0 0}
   .section-head{align-items:start;flex-direction:column;gap:.15rem}
   .section-head p{margin-bottom:.5rem}
   .split{grid-template-columns:1fr}
+  .instagram-feed{grid-template-columns:repeat(2,minmax(0,1fr))}
   .portrait{min-height:220px;aspect-ratio:16/10}
 }
 @media(max-width:500px){.gallery{grid-template-columns:1fr}.art-link{aspect-ratio:1/1.15}.footer{align-items:flex-start;flex-direction:column;gap:.6rem}}
