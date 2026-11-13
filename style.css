@@ -3,10 +3,11 @@
 :root {
 	color-scheme: dark;
 	--bg: #100e0d;
-	--ink: #eee7da;
-	--muted: #bfb4a7;
-	--accent: #e09885;
-	--edge: #483d36;
+	--ink: #e8dfcb;
+	--muted: #c5bca8;
+	--accent: #a9bc9c;
+	--edge: #79624c;
+	--forest: #233b2e;
 	--display: "Cormorant Garamond", Georgia, serif;
 	--label: "Barlow Condensed", "Arial Narrow", sans-serif;
 }
@@ -70,7 +71,10 @@ header {
 	gap: 1rem;
 	padding: 1rem 4vw;
 	border-bottom: 1px solid var(--edge);
-	background: #13100f;
+	background:
+		linear-gradient(90deg, rgb(121 98 76 / 6%), transparent 42%, rgb(35 59 46 / 8%)),
+		repeating-linear-gradient(2deg, rgb(121 98 76 / 3%) 0 1px, transparent 1px 8px),
+		#13110f;
 }
 .brand,
 nav,
@@ -125,24 +129,24 @@ nav a:hover {
 	justify-content: center;
 	gap: 0.8em;
 	padding: 0.65rem 1rem;
-	border: 1px solid #80665b;
+	border: 1px solid var(--edge);
 	min-height: 44px;
 	color: var(--ink);
 	background: transparent;
 	font-size: 0.96rem;
 }
 .solid {
-	background: #e09885;
-	color: #20130f;
-	border-color: #e09885;
+	background: var(--forest);
+	color: var(--ink);
+	border-color: var(--forest);
 }
 .solid:hover {
-	background: #f2b6a6;
-	color: #20130f;
+	background: #2e4a39;
+	color: var(--ink);
 }
 .outline:hover,
 .menu:hover {
-	background: #362520;
+	background: var(--forest);
 	color: var(--ink);
 }
 .hero {
@@ -160,7 +164,7 @@ nav a:hover {
 			transparent 78%
 		),
 		linear-gradient(0deg, #100e0d, transparent 36%),
-		#130f0e url("assets/hero.jpg") center 46% / cover no-repeat;
+		#100e0d url("assets/hero.jpg") center 46% / cover no-repeat;
 }
 .hero-inner {
 	padding-block: 4rem;
@@ -257,7 +261,7 @@ figure {
 	position: relative;
 	aspect-ratio: 1/1.38;
 	overflow: hidden;
-	background: #211814;
+	background: #171914;
 	border: 1px solid var(--edge);
 }
 .art-link img {
@@ -292,7 +296,7 @@ figcaption small {
 }
 .about {
 	background:
-		radial-gradient(ellipse at 20% 60%, #291b17, transparent 55%), #151110;
+		radial-gradient(ellipse at 20% 60%, rgb(35 59 46 / 48%), transparent 55%), #141512;
 	border-block: 1px solid var(--edge);
 }
 .portrait {
@@ -301,14 +305,14 @@ figcaption small {
 	justify-items: center;
 	min-height: 300px;
 	aspect-ratio: 5/4;
-	border: 1px solid #665148;
+	border: 1px solid var(--edge);
 	outline: 1px solid var(--edge);
 	outline-offset: -0.65rem;
 	background: repeating-radial-gradient(
 		ellipse at center,
-		#281d18 0,
-		#1b1513 49%,
-		#1d1614 50%
+		#1d281f 0,
+		#141915 49%,
+		#171814 50%
 	);
 	color: var(--accent);
 }
@@ -335,15 +339,17 @@ figcaption small {
 	gap: 0.5rem;
 	padding: clamp(1rem, 3vw, 2rem);
 	border: 1px solid var(--edge);
-	background: #171211;
+	background:
+		linear-gradient(135deg, rgb(35 59 46 / 24%), transparent 65%),
+		#141512;
 }
 label {
 	font-size: 0.9rem;
 }
 input,
 textarea {
-	border: 1px solid #80665b;
-	background: #100e0d;
+	border: 1px solid var(--edge);
+	background: var(--bg);
 	color: var(--ink);
 	padding: 0.55rem 0.7rem;
 	border-radius: 0;
@@ -366,7 +372,9 @@ textarea {
 }
 footer {
 	border-top: 1px solid var(--edge);
-	background: #13100f;
+	background:
+		repeating-linear-gradient(2deg, rgb(121 98 76 / 3%) 0 1px, transparent 1px 8px),
+		#13110f;
 }
 .footer {
 	display: flex;
@@ -380,8 +388,8 @@ footer {
 dialog {
 	width: min(90vw, 470px);
 	max-height: 92dvh;
-	background: #181211;
-	border: 1px solid #80665b;
+	background: #171814;
+	border: 1px solid var(--edge);
 	color: var(--ink);
 	padding: 1rem;
 }
