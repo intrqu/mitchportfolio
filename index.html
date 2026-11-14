@@ -131,16 +131,13 @@
         <p class="hourly-rate">Hourly Rate: $170/Hour</p>
         <p class="booking">Booking availability: custom books open!</p>
       </div>
-      <form id="inquiry" action="https://formsubmit.co/mitchharsch@gmail.com" method="POST" hidden>
-        <input type="hidden" name="_subject" value="New tattoo inquiry">
-        <input type="hidden" name="_template" value="table">
+      <form id="inquiry" action="https://formspree.io/f/xkjroedl" method="POST" hidden>
         <label for="name">Name</label><input id="name" name="name" autocomplete="name" required>
-        <label for="email">Email</label><input id="email" name="_replyto" type="email" autocomplete="email" required>
+        <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required>
         <label for="idea">Tattoo idea</label><textarea id="idea" name="message" rows="5"
           placeholder="Subject, placement, and approximate size" required></textarea>
         <button class="solid" type="submit">Send inquiry <span aria-hidden="true">↗</span></button>
-        <p class="muted form-note">Sent via FormSubmit to Mitch Harsch. FormSubmit processes your details to deliver
-          this email.</p>
+        <p class="muted form-note">Formspree processes your details to deliver your inquiry to Mitch Harsch.</p>
       </form>
     </section>
   </main>
