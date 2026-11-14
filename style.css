@@ -313,28 +313,22 @@ figcaption small {
 	border-block: 1px solid var(--edge);
 }
 .portrait {
-	display: grid;
-	place-content: center;
-	justify-items: center;
+	position: relative;
+	overflow: hidden;
 	min-height: 300px;
 	aspect-ratio: 5/4;
 	border: 1px solid var(--edge);
 	outline: 1px solid var(--edge);
 	outline-offset: -0.65rem;
-	background: repeating-radial-gradient(
-		ellipse at center,
-		#1d281f 0,
-		#141915 49%,
-		#171814 50%
-	);
-	color: var(--accent);
+	background: #141915;
 }
-.portrait span {
-	font-size: 4rem;
-	line-height: 1.2;
-}
-.portrait small {
-	color: var(--muted);
+.portrait img {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
 }
 .bio {
 	font-size: 2rem;
