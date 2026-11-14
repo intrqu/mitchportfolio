@@ -15,7 +15,9 @@ nav.addEventListener('click', (event) => {
   const link = event.target.closest('a');
   if (link && mobile.matches) {
     setMenu(false);
-    const destination = document.querySelector(link.hash);
+    const samePage = link.pathname === location.pathname && link.origin === location.origin;
+    const destination = samePage && link.hash ? document.getElementById(link.hash.slice(1)) : null;
+    if (!destination) return;
     destination.setAttribute('tabindex', '-1');
     destination.focus({ preventScroll: true });
   }
@@ -45,8 +47,8 @@ for (const link of document.querySelectorAll('.gallery .art-link')) {
     lightbox.showModal();
   });
 }
-lightbox.addEventListener('close', () => activeArtwork?.focus());
+lightbox?.addEventListener('close', () => activeArtwork?.focus());
 
 const inquiry = document.querySelector('#inquiry');
-inquiry.hidden = false;
+if (inquiry) inquiry.hidden = false;
 
