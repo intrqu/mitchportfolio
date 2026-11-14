@@ -94,6 +94,8 @@ nav,
 figcaption small,
 .tattoo,
 .location,
+.booking,
+.hourly-rate,
 .portrait small {
 	font-family: var(--label);
 	letter-spacing: 0.14em;
@@ -173,8 +175,7 @@ nav a:hover {
 			#100e0d55 52%,
 			transparent 78%
 		),
-		linear-gradient(0deg, #100e0d, transparent 36%),
-		var(--hero-image);
+		linear-gradient(0deg, #100e0d, transparent 36%), var(--hero-image);
 	background-position: center;
 	background-size: cover;
 }
@@ -231,7 +232,7 @@ h1 {
 }
 h2 {
 	margin: 0;
-	font-size: clamp(3.2rem, 7vw, 6rem);
+	font-size: clamp(3.1rem, 6vw, 6rem);
 	line-height: 0.95;
 	letter-spacing: -0.045em;
 }
@@ -418,7 +419,7 @@ dialog::backdrop {
 	margin-bottom: 0.75rem;
 }
 .dialog-head h2 {
-	font-size: 2.1rem;
+	font-size: 2.05rem;
 }
 dialog .art-link {
 	height: min(62dvh, 520px);
