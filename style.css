@@ -484,3 +484,7 @@ dialog p {
 	pointer-events: none;
 	z-index: 1;
 }
+
+#instagram a[href*="elfsight.com/instagram-feed-instashow/"] {
+	display: none !important;
+}
