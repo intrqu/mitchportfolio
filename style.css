@@ -72,8 +72,17 @@ header {
 	padding: 1rem 4vw;
 	border-bottom: 1px solid var(--edge);
 	background:
-		linear-gradient(90deg, rgb(121 98 76 / 6%), transparent 42%, rgb(35 59 46 / 8%)),
-		repeating-linear-gradient(2deg, rgb(121 98 76 / 3%) 0 1px, transparent 1px 8px),
+		linear-gradient(
+			90deg,
+			rgb(121 98 76 / 6%),
+			transparent 42%,
+			rgb(35 59 46 / 8%)
+		),
+		repeating-linear-gradient(
+			2deg,
+			rgb(121 98 76 / 3%) 0 1px,
+			transparent 1px 8px
+		),
 		#13110f;
 }
 .brand,
@@ -163,8 +172,7 @@ nav a:hover {
 			#100e0d55 52%,
 			transparent 78%
 		),
-		linear-gradient(0deg, #100e0d, transparent 36%),
-		#100e0d url("assets/hero.jpg") center 46% / cover no-repeat;
+		linear-gradient(0deg, #100e0d, transparent 36%);
 }
 .hero-inner {
 	padding-block: 4rem;
@@ -296,7 +304,12 @@ figcaption small {
 }
 .about {
 	background:
-		radial-gradient(ellipse at 20% 60%, rgb(35 59 46 / 48%), transparent 55%), #141512;
+		radial-gradient(
+			ellipse at 20% 60%,
+			rgb(35 59 46 / 48%),
+			transparent 55%
+		),
+		#141512;
 	border-block: 1px solid var(--edge);
 }
 .portrait {
@@ -340,8 +353,7 @@ figcaption small {
 	padding: clamp(1rem, 3vw, 2rem);
 	border: 1px solid var(--edge);
 	background:
-		linear-gradient(135deg, rgb(35 59 46 / 24%), transparent 65%),
-		#141512;
+		linear-gradient(135deg, rgb(35 59 46 / 24%), transparent 65%), #141512;
 }
 label {
 	font-size: 0.9rem;
@@ -373,7 +385,11 @@ textarea {
 footer {
 	border-top: 1px solid var(--edge);
 	background:
-		repeating-linear-gradient(2deg, rgb(121 98 76 / 3%) 0 1px, transparent 1px 8px),
+		repeating-linear-gradient(
+			2deg,
+			rgb(121 98 76 / 3%) 0 1px,
+			transparent 1px 8px
+		),
 		#13110f;
 }
 .footer {
