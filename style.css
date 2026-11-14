@@ -163,6 +163,7 @@ nav a:hover {
 	display: grid;
 	align-items: center;
 	min-height: clamp(570px, 77svh, 850px);
+	--hero-image: url("assets/hero-desktop.jpg");
 	border-bottom: 1px solid var(--edge);
 	background:
 		linear-gradient(
@@ -172,7 +173,10 @@ nav a:hover {
 			#100e0d55 52%,
 			transparent 78%
 		),
-		linear-gradient(0deg, #100e0d, transparent 36%);
+		linear-gradient(0deg, #100e0d, transparent 36%),
+		var(--hero-image);
+	background-position: center;
+	background-size: cover;
 }
 .hero-inner {
 	padding-block: 4rem;
@@ -437,6 +441,7 @@ dialog p {
 	}
 	.hero {
 		min-height: 590px;
+		--hero-image: url("assets/hero-mobile");
 		background-position: 61% center;
 	}
 	.hero-inner {
