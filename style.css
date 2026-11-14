@@ -504,3 +504,6 @@ dialog p {
 #instagram a[href*="elfsight.com/instagram-feed-instashow/"] {
 	display: none !important;
 }
+#instagram a[href^="https://elfsight.com/instagram-feed-instashow/"] {
+	opacity: 0.7;
+}
