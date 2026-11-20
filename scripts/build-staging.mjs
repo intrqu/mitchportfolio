@@ -87,6 +87,10 @@ function preparePage(source, page) {
         '<script src="../staging-gift-cards.js" defer></script>'
       )
       .replace(
+        /<form\b(?=[^>]*\bid=["']gift-order["'])[^>]*>/i,
+        (tag) => tag.replace(/>$/, ' onsubmit="return false">')
+      )
+      .replace(
         /<fieldset>\s*<legend>Payment method<\/legend>[\s\S]*?<\/fieldset>/i,
         "<fieldset><legend>Payment method</legend><p>Disabled in test mode. No payment is collected.</p></fieldset>"
       )
@@ -164,7 +168,9 @@ function verifyOutput() {
       throw new Error(`Staging banner or noindex metadata is missing from ${page}.`);
     }
     if (page === "gift-cards/index.html" &&
-        (!html.includes("staging-gift-cards.js") || !html.includes("No payment will be collected."))) {
+        (!html.includes("staging-gift-cards.js") ||
+         !html.includes("No payment will be collected.") ||
+         !/<form\b[^>]*id="gift-order"[^>]*onsubmit="return false"/i.test(html))) {
       throw new Error("The gift-card page is not configured for the local test flow.");
     }
     if (page === "admin/gift-cards/index.html" &&
