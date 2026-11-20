@@ -1,0 +1,11 @@
+{
+  "name": "mht-giftcards-staging-admin-tools",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "set-admin-claim": "node set-admin-claim.cjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.1"
+  }
+}

@@ -1,38 +1,83 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app-check.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 
 const error = document.querySelector("#admin-error");
 const login = document.querySelector("#admin-login");
 const dashboard = document.querySelector("#admin-dashboard");
+const config = window.MHT_FIREBASE_CONFIG;
 
-if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
-    window.MHT_FIREBASE_CONFIG?.appCheckSiteKey?.startsWith("REPLACE_")) {
-  error.textContent = "Firebase is not configured. See the gift card setup instructions.";
+if (config?.apiKey?.startsWith("REPLACE_") || !config?.workerApiBaseUrl) {
+  error.textContent = "Staging administration is not configured. See the gift card setup instructions.";
   login.querySelector("button").disabled = true;
 } else {
-  const app = initializeApp(window.MHT_FIREBASE_CONFIG);
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(window.MHT_FIREBASE_CONFIG.appCheckSiteKey),
-    isTokenAutoRefreshEnabled: true
+  const workerApiBaseUrl = config.workerApiBaseUrl;
+  const app = initializeApp({
+    apiKey: config.apiKey,
+    authDomain: config.authDomain,
+    projectId: config.projectId,
+    appId: config.appId
   });
   const auth = getAuth(app);
-  const functions = getFunctions(app, "us-west1");
-  const call = (name, data = {}) => httpsCallable(functions, name)(data).then((result) => result.data);
+  const call = async (name, data = {}) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Sign in to continue.");
+    const routes = {
+      listGiftCardOrders: { method: "GET", path: "/api/admin/orders" },
+      simulateStagingPayment: { method: "POST", path: `/api/admin/orders/${encodeURIComponent(data.orderId)}/simulate-payment` },
+      retryGiftCardOrderEmails: { method: "POST", path: `/api/admin/orders/${encodeURIComponent(data.orderId)}/retry-order-emails` },
+      issueGiftCertificate: { method: "POST", path: `/api/admin/orders/${encodeURIComponent(data.orderId)}/issue` },
+      resendGiftCertificate: { method: "POST", path: `/api/admin/orders/${encodeURIComponent(data.orderId)}/resend` },
+      lookupGiftCertificate: { method: "POST", path: "/api/admin/certificates/lookup" },
+      redeemGiftCertificate: { method: "POST", path: "/api/admin/certificates/redeem" }
+    };
+    const route = routes[name];
+    if (!route) throw new Error("This administration action is not available.");
+    const url = new URL(`${workerApiBaseUrl}${route.path}`);
+    if (name === "listGiftCardOrders" && data.cursor) url.searchParams.set("cursor", data.cursor);
+    const response = await fetch(url, {
+      method: route.method,
+      headers: {
+        Authorization: `Bearer ${await user.getIdToken()}`,
+        "Content-Type": "application/json"
+      },
+      body: route.method === "POST" ? JSON.stringify(data) : undefined
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const requestError = new Error(result?.error || "The request could not be completed.");
+      requestError.code = `functions/${result?.code || "internal"}`;
+      throw requestError;
+    }
+    return result;
+  };
   let orders = [];
   let orderCursor = null;
   let lastCertificateCode = "";
 
+  let rejectedAdminSignIn = false;
   onAuthStateChanged(auth, async (user) => {
     error.textContent = "";
     login.hidden = Boolean(user);
     dashboard.hidden = !user;
-    if (!user) return;
+    if (!user) {
+      if (rejectedAdminSignIn) {
+        error.textContent = "This account is not authorized for gift card administration.";
+        rejectedAdminSignIn = false;
+      }
+      return;
+    }
     document.querySelector("#admin-identity").textContent = `Signed in as ${user.email || "administrator"}`;
     try {
+      const token = await user.getIdTokenResult();
+      if (token.claims.admin !== true) {
+        rejectedAdminSignIn = true;
+        await signOut(auth);
+        return;
+      }
       await loadOrders();
     } catch (requestError) {
+      dashboard.hidden = true;
+      login.hidden = false;
       error.textContent = requestError.message || "Could not load gift card orders.";
     }
   });
@@ -84,7 +129,7 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
     list.replaceChildren();
     const filter = document.querySelector("#order-filter").value;
     const visibleOrders = orders.filter((order) => {
-      if (filter === "pending") return order.paymentStatus === "pending_payment" || order.paymentStatus === "payment_reported";
+      if (filter === "pending") return order.paymentStatus === "pending_payment";
       if (filter === "paid") return order.paymentStatus === "paid" && order.certificateStatus === "not_issued";
       if (filter === "issued") return order.certificateStatus === "issued";
       if (filter === "partial") return order.certificateStatus === "partially_redeemed";
@@ -104,7 +149,8 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
       details.textContent = `${order.purchaserName} (${order.purchaserEmail}) · For ${order.recipientName} (${order.recipientEmail})`;
       const status = document.createElement("p");
       status.className = "muted";
-      status.textContent = `${order.paymentStatus.replaceAll("_", " ")} · ${order.certificateStatus.replaceAll("_", " ")}${order.remainingBalanceCents === null ? "" : ` · Balance ${money(order.remainingBalanceCents)}`}`;
+      const paymentStatus = order.paymentStatus === "paid" ? "test payment simulated" : order.paymentStatus.replaceAll("_", " ");
+      status.textContent = `${paymentStatus} · ${order.certificateStatus.replaceAll("_", " ")}${order.remainingBalanceCents === null ? "" : ` · Balance ${money(order.remainingBalanceCents)}`} · VOID — TEST ONLY`;
       article.append(heading, details, status);
       if (order.message) {
         const message = document.createElement("p");
@@ -119,30 +165,40 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
       }
       const actions = document.createElement("div");
       actions.className = "admin-actions";
-      if (order.paymentStatus === "pending_payment" || order.paymentStatus === "payment_reported") {
-        actions.append(actionButton("Confirm payment and issue", async () => {
-          if (!window.confirm(`Confirm that ${money(order.amountCents)} for ${order.orderRef} has arrived in the bank account?`)) return;
-          const result = await call("confirmInteracPayment", { orderId: order.id });
+      if (!order.orderEmailSentAt || !order.adminEmailSentAt) {
+        actions.append(actionButton("Retry test order emails", async () => {
+          const result = await call("retryGiftCardOrderEmails", { orderId: order.id });
+          showMessage(result.confirmationEmailSent && result.adminEmailSent
+            ? "Order and admin notification emails sent."
+            : "One or more order emails could not be sent. Check staging email configuration.");
+        }));
+      }
+      if (order.paymentStatus === "pending_payment") {
+        actions.append(actionButton("Simulate payment and issue (VOID — TEST ONLY)", async () => {
+          if (!window.confirm(`Simulate a test payment for ${order.orderRef}? No money will be received and the certificate will be void.`)) return;
+          const result = await call("simulateStagingPayment", { orderId: order.id });
           if (result.alreadyConfirmed) {
-            showMessage("Payment was already confirmed. No additional certificate was created.");
+            showMessage("Test payment was already simulated. No additional certificate was created.");
             return;
           }
           showMessage(result.emailSent && result.confirmationEmailSent
-            ? "Payment confirmed; certificate issued and emails sent."
-            : "Payment confirmed and certificate issued, but one or more emails failed. Use Resend after checking email configuration.");
+            ? "Test payment simulated; void certificate issued and test emails sent."
+            : "Test payment simulated and void certificate issued, but one or more test emails failed.");
         }));
       } else if (order.paymentStatus === "paid" && order.certificateStatus === "not_issued") {
-        actions.append(actionButton("Issue certificate", async () => {
+        actions.append(actionButton("Issue test certificate (VOID — TEST ONLY)", async () => {
           const result = await call("issueGiftCertificate", { orderId: order.id });
-          showMessage(result.emailSent ? "Certificate issued and emailed." : "Certificate issued, but email delivery failed. Check email configuration and resend.");
+          showMessage(result.emailSent
+            ? "Void test certificate issued and emailed."
+            : "Void test certificate issued, but test email delivery failed.");
         }));
       } else if (order.paymentStatus === "paid") {
         if (!order.paymentConfirmationEmailSent) {
-          actions.append(actionButton("Retry payment confirmation email", async () => {
-            const result = await call("confirmInteracPayment", { orderId: order.id });
-            showMessage(result.confirmationEmailSent
-              ? "Payment confirmation email sent."
-              : "Payment confirmation email could not be sent. Check email configuration and retry.");
+          actions.append(actionButton("Retry test payment and certificate emails", async () => {
+            const result = await call("simulateStagingPayment", { orderId: order.id });
+            showMessage(result.confirmationEmailSent && result.emailSent
+              ? "Test payment and void certificate emails sent."
+              : "One or more test emails could not be sent. Check configuration and retry.");
           }));
         }
         actions.append(actionButton("Resend certificate", async () => {
@@ -151,7 +207,9 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
           sessionStorage.setItem(deliveryKey, requestId);
           const result = await call("resendGiftCertificate", { orderId: order.id, requestId });
           if (result.emailSent) sessionStorage.removeItem(deliveryKey);
-          showMessage(result.emailSent ? "Certificate resent." : "Certificate could not be emailed. Check email configuration.");
+          showMessage(result.emailSent
+            ? "Void test certificate resent."
+            : "Void test certificate could not be emailed. Check staging email configuration.");
         }));
       }
       if (actions.childElementCount) article.append(actions);
@@ -169,7 +227,13 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
       error.textContent = "";
       try {
         await action();
+        const notice = error.textContent;
+        const noticeClass = error.className;
         await loadOrders();
+        if (notice) {
+          error.className = noticeClass;
+          error.textContent = notice;
+        }
       } catch (requestError) {
         showError(requestError);
         button.disabled = false;
@@ -197,17 +261,17 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
     target.replaceChildren();
     const certificate = result.certificate;
     const heading = document.createElement("h3");
-    heading.textContent = `${certificate.recipientName} · ${money(certificate.balanceCents)} remaining`;
+    heading.textContent = `${certificate.recipientName} · ${money(certificate.balanceCents)} remaining · VOID — TEST ONLY`;
     const summary = document.createElement("p");
-    summary.textContent = `Order ${certificate.orderRef} · Original value ${money(certificate.amountCents)} · ${certificate.status.replaceAll("_", " ")}`;
+    summary.textContent = `Order ${certificate.orderRef} · Original value ${money(certificate.amountCents)} · ${certificate.status.replaceAll("_", " ")} · Test-only balance simulation`;
     const recipient = document.createElement("p");
     recipient.textContent = certificate.recipientEmail;
     target.append(heading, summary, recipient);
 
     const redemptionForm = document.createElement("form");
     redemptionForm.className = "admin-inline";
-    redemptionForm.innerHTML = `<label>Redeem amount (CAD)<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
-      <label>Note (optional)<input name="note" maxlength="500"></label><button class="solid" type="submit">Redeem</button>`;
+    redemptionForm.innerHTML = `<label>Simulate redemption amount (CAD)<input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+      <label>Note (optional)<input name="note" maxlength="500"></label><button class="solid" type="submit">Record test redemption</button>`;
     const pendingKey = `mht-pending-redemption-${certificate.orderRef}`;
     let pendingRequest = null;
     try {
@@ -259,11 +323,12 @@ if (window.MHT_FIREBASE_CONFIG?.apiKey?.startsWith("REPLACE_") ||
           requestId: pendingRequest.requestId
         });
         sessionStorage.removeItem(pendingKey);
-        showMessage(result.alreadyRedeemed
+        const notice = result.alreadyRedeemed
           ? "This redemption was already recorded; no additional balance was deducted."
-          : "Redemption recorded.");
+          : "Redemption recorded.";
         await lookupCertificate(lastCertificateCode);
         await loadOrders();
+        showMessage(notice);
       } catch (requestError) {
         if (["functions/invalid-argument", "functions/failed-precondition", "functions/not-found"]
           .includes(requestError.code)) {

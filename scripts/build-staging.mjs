@@ -25,8 +25,8 @@ const staticFiles = [
   "style.css",
   "staging.css",
   "staging.js",
-  "staging-gift-cards.js",
-  "staging-admin-gift-cards.js"
+  "gift-cards.js",
+  "admin-gift-cards.js"
 ];
 
 if (existsSync(output)) {
@@ -37,6 +37,7 @@ if (existsSync(output)) {
 }
 mkdirSync(output, { recursive: true });
 for (const file of staticFiles) copyFile(file);
+writeFirebaseConfig();
 cpSync(path.join(root, "assets"), path.join(output, "assets"), { recursive: true });
 
 for (const page of pages) {
@@ -70,64 +71,41 @@ function preparePage(source, page) {
     /<form\b(?=[^>]*\bid=["']inquiry["'])[^>]*>[\s\S]*?<\/form>/i,
     '<div id="inquiry" class="staging-disabled-form"><p>Inquiry submissions are disabled on this test site. No message is sent.</p></div>'
   );
-  html = html.replace(
-    /<form\b(?=[^>]*\bid=["']admin-login["'])[^>]*>[\s\S]*?<\/form>/i,
-    '<p id="admin-login" hidden>Administrator sign-in is unavailable in the test demo.</p>'
-  );
-  html = html.replace(
-    /<form\b(?=[^>]*\bid=["']certificate-search["'])[^>]*>[\s\S]*?<\/form>/i,
-    '<p id="certificate-search-note">Certificate lookup and redemption are disabled. Test previews have no redemption code.</p>'
-  );
-
   if (page === "gift-cards/index.html") {
     html = html
-      .replace(/<script src=["']\.\.\/firebase-config\.js["']><\/script>\s*/i, "")
-      .replace(
-        /<script type=["']module["'] src=["']\.\.\/gift-cards\.js["']><\/script>/i,
-        '<script src="../staging-gift-cards.js" defer></script>'
-      )
-      .replace(
-        /<form\b(?=[^>]*\bid=["']gift-order["'])[^>]*>/i,
-        (tag) => tag.replace(/>$/, ' onsubmit="return false">')
-      )
       .replace(
         /<fieldset>\s*<legend>Payment method<\/legend>[\s\S]*?<\/fieldset>/i,
-        "<fieldset><legend>Payment method</legend><p>Disabled in test mode. No payment is collected.</p></fieldset>"
+        "<fieldset><legend>Payment</legend><p>TEST MODE — payment is disabled. No money will be collected.</p></fieldset>"
       )
       .replace(
         "The total shown is the exact amount to send by e-Transfer.",
-        "The amount is for preview only. No payment will be collected."
+        "The amount is for testing only. No payment will be collected."
       )
       .replace("Place e-Transfer order", "Create test order")
       .replace("Your certificate is issued after Mitch confirms the payment.",
-        "Test certificate previews are void and cannot be redeemed.")
+        "Any certificate issued in this isolated test project is VOID — TEST ONLY.")
       .replace(
         "Interac orders remain inactive until the payment is confirmed. No certificate code is created before then.",
-        "This demo never accepts payment or creates a redeemable certificate."
+        "Test payments are simulated by an authorized staging administrator. Test certificates have no monetary value and are not valid for services."
       )
       .replace(
         /<dl class=["']payment-details["']>[\s\S]*?<\/dl>/i,
-        '<p class="form-note">Payment and transfer details are disabled in test mode.</p>'
+        '<dl class="payment-details"><div><dt>Test order reference</dt><dd><code id="order-reference"></code> <button type="button" class="copy-button" id="copy-reference">Copy test reference</button></dd></div><div><dt>Test amount</dt><dd id="transfer-amount"></dd></div></dl>'
       )
       .replace(
         "The certificate will be issued after payment confirmation. Reporting your transfer does not activate it.",
-        "No payment, transfer report, email, or real certificate is created on this test site."
+        "A test certificate can be issued only by an authorized staging administrator and is always marked VOID — TEST ONLY."
       )
       .replace(/<button id=["']payment-reported["']/i, '<button id="payment-reported" hidden');
   }
 
   if (page === "admin/gift-cards/index.html") {
     html = html
-      .replace(/<script src=["']\.\.\/\.\.\/firebase-config\.js["']><\/script>\s*/i, "")
-      .replace(
-        /<script type=["']module["'] src=["']\.\.\/\.\.\/admin-gift-cards\.js["']><\/script>/i,
-        '<script src="../../staging-admin-gift-cards.js" defer></script>'
-      )
       .replace(
         "Confirm e-Transfer payments only after checking the bank account. Customer reports are not payment confirmation.",
-        "Demo only. No Firebase, customer records, payments, certificates, or redemption services are connected."
+        "STAGING ONLY. Simulate payment; no money is received. Every test certificate is VOID — TEST ONLY. Balance changes are isolated test data."
       )
-      .replace("Private area", "Test-only admin demo");
+      .replace("Private area", "Private test-only area");
   }
 
   html = html.replace(/<link rel=["']canonical["'][^>]*>\s*/i, "");
@@ -142,9 +120,48 @@ function preparePage(source, page) {
   html = html.replace("</head>",
     `  <link rel="canonical" href="${canonical}">\n  <link rel="stylesheet" href="${prefix}staging.css">\n</head>`);
   html = html.replace(/<body\b[^>]*>/i,
-    (tag) => `${tag}\n  <div class="staging-banner" role="status"><strong>TEST SITE — NOT LIVE</strong><span>No real payments, email, or redeemable certificates.</span></div>`);
+    (tag) => `${tag}\n  <div class="staging-banner" role="status"><strong>TEST SITE — NOT LIVE</strong><span>No real payments. Test emails are allowlisted; certificates are VOID — TEST ONLY.</span></div>`);
   html = html.replace("</body>", `  <script src="${prefix}staging.js" defer></script>\n</body>`);
   return html;
+}
+
+function writeFirebaseConfig() {
+  const workerApiBaseUrl = (process.env.STAGING_WORKER_API_URL || "").replace(/\/+$/, "");
+  const config = {
+    apiKey: process.env.STAGING_FIREBASE_API_KEY || "",
+    authDomain: process.env.STAGING_FIREBASE_AUTH_DOMAIN || "",
+    projectId: process.env.STAGING_FIREBASE_PROJECT_ID || "",
+    appId: process.env.STAGING_FIREBASE_APP_ID || "",
+    workerApiBaseUrl,
+    turnstileSiteKey: process.env.STAGING_TURNSTILE_SITE_KEY || "",
+    stagingTestMode: true
+  };
+  const required = ["apiKey", "authDomain", "projectId", "appId", "workerApiBaseUrl", "turnstileSiteKey"];
+  const missing = required.filter((key) => !config[key]);
+  if (missing.length) {
+    throw new Error(`Missing staging web configuration: ${missing.join(", ")}.`);
+  }
+  if (config.projectId !== "mht-giftcards-staging") {
+    throw new Error("The staging artifact must use only the mht-giftcards-staging Firebase project.");
+  }
+  if (config.authDomain !== `${config.projectId}.firebaseapp.com`) {
+    throw new Error("The staging Firebase auth domain does not match the staging project.");
+  }
+  const workerUrl = new URL(workerApiBaseUrl);
+  const localWorker = ["localhost", "127.0.0.1"].includes(workerUrl.hostname);
+  if ((!localWorker &&
+       (workerUrl.protocol !== "https:" ||
+        !workerUrl.hostname.startsWith("mht-giftcards-staging-api.") ||
+        !workerUrl.hostname.endsWith(".workers.dev"))) ||
+      (localWorker && !["http:", "https:"].includes(workerUrl.protocol)) ||
+      (process.env.GITHUB_ACTIONS === "true" && localWorker) ||
+      workerUrl.pathname !== "/" || workerUrl.search || workerUrl.hash) {
+    throw new Error("The staging API URL must use the named staging Worker on workers.dev (or localhost outside GitHub Actions).");
+  }
+  writeFileSync(
+    path.join(output, "firebase-config.js"),
+    `window.MHT_FIREBASE_CONFIG = ${JSON.stringify(config, null, 2)};\n`
+  );
 }
 
 function verifyOutput() {
@@ -153,11 +170,12 @@ function verifyOutput() {
     "mailto:",
     "mitchharsch@gmail.com",
     "mitchharschtattoo.com",
-    "firebase-config.js",
-    "MHT_FIREBASE_CONFIG",
-    "gstatic.com/firebasejs",
     "RESEND_API_KEY",
-    "INTERAC_EMAIL"
+    "CERTIFICATE_ENCRYPTION_KEY",
+    "RATE_LIMIT_HMAC_KEY",
+    "INTERAC_EMAIL",
+    "stripe.com",
+    "api.resend.com"
   ];
 
   for (const page of pages) {
@@ -168,14 +186,16 @@ function verifyOutput() {
       throw new Error(`Staging banner or noindex metadata is missing from ${page}.`);
     }
     if (page === "gift-cards/index.html" &&
-        (!html.includes("staging-gift-cards.js") ||
-         !html.includes("No payment will be collected.") ||
-         !/<form\b[^>]*id="gift-order"[^>]*onsubmit="return false"/i.test(html))) {
-      throw new Error("The gift-card page is not configured for the local test flow.");
+        (!html.includes("../gift-cards.js") ||
+         !html.includes("TEST MODE — payment is disabled. No money will be collected.") ||
+         !html.includes("order-turnstile") ||
+         !html.includes('id="download-certificate"') ||
+         !html.includes('id="payment-reported" hidden'))) {
+      throw new Error("The gift-card page is not configured for the Cloudflare staging test flow.");
     }
     if (page === "admin/gift-cards/index.html" &&
-        (!html.includes("staging-admin-gift-cards.js") || html.includes("firebase-config.js"))) {
-      throw new Error("The admin page is not isolated from Firebase.");
+        (!html.includes("../../admin-gift-cards.js") || !html.includes("VOID — TEST ONLY"))) {
+      throw new Error("The admin page is not configured for test-only Worker management.");
     }
     for (const marker of forbidden) {
       if (html.toLowerCase().includes(marker.toLowerCase())) {
@@ -188,19 +208,23 @@ function verifyOutput() {
   if (existsSync(path.join(output, "CNAME")) || existsSync(path.join(output, "sitemap.xml"))) {
     throw new Error("Production DNS or sitemap files must not be included in the staging artifact.");
   }
-  const certificateScript = readFileSync(path.join(output, "staging-gift-cards.js"), "utf8") +
-    readFileSync(path.join(output, "staging-admin-gift-cards.js"), "utf8");
-  if (!certificateScript.includes("VOID — TEST ONLY") ||
-      !certificateScript.includes("cannot be redeemed") ||
-      /redemptionCode\s*[:=]/i.test(certificateScript)) {
-    throw new Error("Test certificates must be void and must not expose a redemption code.");
+  const configSource = readFileSync(path.join(output, "firebase-config.js"), "utf8");
+  if (!configSource.includes('"projectId": "mht-giftcards-staging"') ||
+      !configSource.includes('"workerApiBaseUrl":') ||
+      !configSource.includes('"turnstileSiteKey":') ||
+      !configSource.includes('"stagingTestMode": true') ||
+      configSource.includes("REPLACE_")) {
+    throw new Error("The output must include only configured staging service endpoints.");
   }
-  for (const script of ["site.js", "staging.js", "staging-gift-cards.js", "staging-admin-gift-cards.js"]) {
+  for (const script of ["site.js", "staging.js", "gift-cards.js", "admin-gift-cards.js"]) {
     const source = readFileSync(path.join(output, script), "utf8");
-    if (/\b(?:fetch|XMLHttpRequest|httpsCallable)\s*\(/i.test(source) ||
-        /firebase-config|api\.resend\.com|stripe\.com/i.test(source)) {
-      throw new Error(`Unexpected network or production integration in ${script}.`);
+    if (/api\.resend\.com|stripe\.com|RESEND_API_KEY|CERTIFICATE_ENCRYPTION_KEY/i.test(source)) {
+      throw new Error(`A server-only payment or email integration was included in ${script}.`);
     }
+  }
+  if (existsSync(path.join(output, "staging-gift-cards.js")) ||
+      existsSync(path.join(output, "staging-admin-gift-cards.js"))) {
+    throw new Error("Browser-only mock scripts must not be included in the functional staging artifact.");
   }
 }
 

@@ -10,6 +10,7 @@
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../style.css">
   <script src="../firebase-config.js"></script>
+  <script id="turnstile-api" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
   <script type="module" src="../gift-cards.js"></script>
 </head>
 <body>
@@ -40,7 +41,7 @@
           <div class="currency-input"><span aria-hidden="true">$</span>
             <input id="custom-amount" name="customAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Custom amount" aria-describedby="amount-help">
           </div>
-          <p id="amount-help" class="form-note">The total shown is the exact amount to send by e-Transfer.</p>
+          <p id="amount-help" class="form-note">The amount is for staging tests only. No payment will be collected.</p>
         </fieldset>
 
         <fieldset>
@@ -82,6 +83,7 @@
         </fieldset>
 
         <div class="order-total"><span>Order total</span><strong id="total">$100.00 CAD</strong></div>
+        <div id="order-turnstile" aria-label="Anti-spam verification"></div>
         <p id="order-error" class="gift-error" role="alert" aria-live="assertive"></p>
         <button id="submit-order" class="solid gift-submit" type="submit">Place e-Transfer order</button>
         <p class="form-note">Your certificate is issued after Mitch confirms the payment.</p>
@@ -110,6 +112,7 @@
         <div><dt>Message</dt><dd>Include your order reference in the e-Transfer message.</dd></div>
       </dl>
       <p id="email-status" class="form-note"></p>
+      <button id="download-certificate" class="outline" type="button" hidden>Download void test certificate (PDF)</button>
       <p class="form-note">The certificate will be issued after payment confirmation. Reporting your transfer does not activate it.</p>
       <button id="payment-reported" class="outline" type="button">I've sent my payment</button>
       <p id="report-status" class="form-note" role="status"></p>

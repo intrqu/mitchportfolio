@@ -1,0 +1,35 @@
+name = "mht-giftcards-staging-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-20"
+workers_dev = true
+
+[vars]
+APP_ENV = "staging"
+FIREBASE_PROJECT_ID = "mht-giftcards-staging"
+PUBLIC_SITE_ORIGIN = "https://intrqu.github.io"
+PUBLIC_SITE_URL = "https://intrqu.github.io/mitchportfolio-staging/"
+TURNSTILE_EXPECTED_HOSTNAME = "intrqu.github.io"
+EMAIL_FROM = ""
+
+[secrets]
+required = [
+  "STAGING_ALLOWED_EMAILS",
+  "STAGING_ADMIN_EMAILS",
+  "TURNSTILE_SECRET_KEY",
+  "CERTIFICATE_ENCRYPTION_KEY",
+  "RATE_LIMIT_HMAC_KEY",
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mht-giftcards-staging"
+database_id = "45ceb65e-7da9-4d98-acc8-3ca816566999"
+migrations_dir = "migrations"
+
+[[ratelimits]]
+name = "ORDER_RATE_LIMIT"
+namespace_id = "50128"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60

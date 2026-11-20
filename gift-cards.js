@@ -1,7 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app-check.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
-
 const config = window.MHT_FIREBASE_CONFIG;
 const form = document.querySelector("#gift-order");
 const error = document.querySelector("#order-error");
@@ -12,6 +8,13 @@ const recipientName = document.querySelector("#recipient-name");
 const recipientEmail = document.querySelector("#recipient-email");
 const giftMessage = document.querySelector("#gift-message");
 const amountRadios = [...document.querySelectorAll('input[name="preset"]')];
+const result = document.querySelector("#order-result");
+const submitButton = document.querySelector("#submit-order");
+const pendingOrderTokenKey = "mhtGiftCardPendingOrderToken";
+const pendingOrderIdKey = "mhtGiftCardPendingOrderId";
+let activeOrder = null;
+let turnstileWidget = null;
+let turnstileToken = "";
 
 function selectedAmount() {
   if (customAmount.value !== "") return Math.round(Number(customAmount.value) * 100);
@@ -46,25 +49,16 @@ form.querySelectorAll('input[name="recipientType"]').forEach((input) => input.ad
 setRecipientMode();
 updateTotal();
 
-if (config?.apiKey?.startsWith("REPLACE_") || config?.appCheckSiteKey?.startsWith("REPLACE_")) {
-  error.textContent = "Gift card checkout is not configured yet. Please contact Mitch through the booking inquiry.";
-  form.querySelector("#submit-order").disabled = true;
+if (config?.apiKey?.startsWith("REPLACE_") ||
+    !config?.workerApiBaseUrl ||
+    !config?.turnstileSiteKey) {
+  error.textContent = "Staging checkout is not configured yet. No order has been submitted.";
+  submitButton.disabled = true;
 } else {
-  const app = initializeApp(config);
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(config.appCheckSiteKey),
-    isTokenAutoRefreshEnabled: true
-  });
-  const functions = getFunctions(app, "us-west1");
-  const createOrder = httpsCallable(functions, "createGiftCardOrder");
-  const reportPayment = httpsCallable(functions, "reportInteracPayment");
-  const result = document.querySelector("#order-result");
-  const submitButton = document.querySelector("#submit-order");
-  const pendingOrderTokenKey = "mhtGiftCardPendingOrderToken";
-  let activeOrder = null;
   try {
     activeOrder = JSON.parse(sessionStorage.getItem("mhtGiftCardOrder") || "null");
-    if (activeOrder?.orderRef && activeOrder?.accessToken && activeOrder?.amountCents && activeOrder?.interacEmail) {
+    if (activeOrder?.orderRef && activeOrder?.accessToken && activeOrder?.amountCents &&
+        activeOrder?.testOnly === true) {
       showOrderResult(activeOrder);
       form.hidden = true;
     } else {
@@ -74,12 +68,17 @@ if (config?.apiKey?.startsWith("REPLACE_") || config?.appCheckSiteKey?.startsWit
     activeOrder = null;
   }
 
+  initializeTurnstile();
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.textContent = "";
     const cents = selectedAmount();
     if (!Number.isSafeInteger(cents) || cents < 1) {
       error.textContent = "Enter a valid amount greater than zero.";
+      return;
+    }
+    if (!turnstileToken) {
+      error.textContent = "Complete the anti-spam check before submitting.";
       return;
     }
 
@@ -95,79 +94,167 @@ if (config?.apiKey?.startsWith("REPLACE_") || config?.appCheckSiteKey?.startsWit
     };
 
     submitButton.disabled = true;
-    submitButton.textContent = "Placing order…";
+    submitButton.textContent = "Creating test order…";
     try {
-      let accessToken = sessionStorage.getItem(pendingOrderTokenKey);
-      if (!/^[A-Za-z0-9_-]{43}$/.test(accessToken || "")) {
-        const bytes = crypto.getRandomValues(new Uint8Array(32));
-        const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
-        accessToken = btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-        sessionStorage.setItem(pendingOrderTokenKey, accessToken);
+      const accessToken = getOrCreateSessionValue(pendingOrderTokenKey, () => randomToken());
+      const idempotencyKey = getOrCreateSessionValue(pendingOrderIdKey, () => crypto.randomUUID());
+      const response = await fetch(`${config.workerApiBaseUrl}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          accessToken,
+          idempotencyKey,
+          turnstileToken
+        })
+      });
+      const responseBody = await response.json();
+      if (!response.ok) throw apiError(responseBody);
+      if (responseBody.testOnly !== true) {
+        throw new Error("The staging API did not confirm test-only mode. No order result was accepted.");
       }
-      const response = await createOrder({ ...data, accessToken });
+
       sessionStorage.removeItem(pendingOrderTokenKey);
+      sessionStorage.removeItem(pendingOrderIdKey);
       activeOrder = {
-        orderRef: response.data.orderRef,
-        accessToken: response.data.accessToken,
-        amountCents: response.data.amountCents,
-        interacEmail: response.data.interacEmail,
-        purchaserEmail: response.data.purchaserEmail,
-        emailSent: response.data.emailSent,
-        reusedRequest: response.data.reusedRequest
+        orderRef: responseBody.orderRef,
+        accessToken: responseBody.accessToken,
+        amountCents: responseBody.amountCents,
+        purchaserEmail: responseBody.purchaserEmail,
+        emailSent: responseBody.emailSent,
+        testOnly: true,
+        reusedRequest: responseBody.reusedRequest
       };
       sessionStorage.setItem("mhtGiftCardOrder", JSON.stringify(activeOrder));
       showOrderResult(activeOrder);
       form.hidden = true;
     } catch (requestError) {
-      error.textContent = requestError.message || "We couldn't place your order. Please try again.";
+      error.textContent = requestError.message || "We couldn't create your test order. Please try again.";
       submitButton.disabled = false;
-      submitButton.textContent = "Place e-Transfer order";
+      submitButton.textContent = "Create test order";
+    } finally {
+      turnstileToken = "";
+      if (turnstileWidget !== null) window.turnstile?.reset(turnstileWidget);
     }
   });
 
-  document.querySelector("#payment-reported").addEventListener("click", async (event) => {
+  const copyReferenceButton = document.querySelector("#copy-reference");
+  if (copyReferenceButton) {
+    copyReferenceButton.addEventListener("click", () =>
+      copyText(activeOrder?.orderRef, copyReferenceButton));
+  }
+  const downloadButton = document.querySelector("#download-certificate");
+  downloadButton.addEventListener("click", downloadCertificate);
+
+  async function downloadCertificate() {
     if (!activeOrder) return;
-    const button = event.currentTarget;
-    button.disabled = true;
+    error.textContent = "";
+    downloadButton.disabled = true;
     try {
-      await reportPayment(activeOrder);
-      activeOrder.paymentReported = true;
-      sessionStorage.setItem("mhtGiftCardOrder", JSON.stringify(activeOrder));
-      document.querySelector("#report-status").textContent =
-        "Thanks. Mitch has been notified. Your certificate remains inactive until payment is confirmed.";
-      button.textContent = "Payment reported";
+      const response = await fetch(
+        `${config.workerApiBaseUrl}/api/orders/${encodeURIComponent(activeOrder.orderRef)}/certificate.pdf`,
+        { headers: { Authorization: `Bearer ${activeOrder.accessToken}` } }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw apiError(body);
+      }
+      const pdf = await response.blob();
+      const link = document.createElement("a");
+      const objectUrl = URL.createObjectURL(pdf);
+      link.href = objectUrl;
+      link.download = `${activeOrder.orderRef}-VOID-TEST-ONLY.pdf`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
     } catch (requestError) {
-      document.querySelector("#report-status").textContent =
-        requestError.message || "We couldn't record your report. Please contact Mitch.";
-      button.disabled = false;
+      error.textContent = requestError.message || "The certificate is not available yet.";
+    } finally {
+      downloadButton.disabled = false;
     }
-  });
+  }
 
-  document.querySelector("#copy-reference").addEventListener("click", () =>
-    copyText(activeOrder?.orderRef, document.querySelector("#copy-reference")));
-  document.querySelector("#copy-email").addEventListener("click", () =>
-    copyText(document.querySelector("#transfer-email").textContent, document.querySelector("#copy-email")));
+  function initializeTurnstile() {
+    const target = document.querySelector("#order-turnstile");
+    const render = () => {
+      if (!target || !window.turnstile) {
+        error.textContent = "The staging anti-spam check did not load. Refresh the page to try again.";
+        submitButton.disabled = true;
+        return;
+      }
+      turnstileWidget = window.turnstile.render(target, {
+        sitekey: config.turnstileSiteKey,
+        action: "gift_card_order",
+        callback: (token) => {
+          turnstileToken = token;
+          error.textContent = "";
+        },
+        "expired-callback": () => { turnstileToken = ""; },
+        "error-callback": () => {
+          turnstileToken = "";
+          error.textContent = "The anti-spam check failed to load. Please refresh the page.";
+        }
+      });
+    };
+    if (window.turnstile) {
+      render();
+      return;
+    }
+    const script = document.querySelector("#turnstile-api");
+    if (!script) {
+      error.textContent = "The staging anti-spam check is unavailable. Please refresh the page.";
+      submitButton.disabled = true;
+      return;
+    }
+    script.addEventListener("load", render, { once: true });
+    script.addEventListener("error", () => {
+      error.textContent = "The staging anti-spam check could not be loaded. Please refresh the page.";
+      submitButton.disabled = true;
+    }, { once: true });
+    setTimeout(() => {
+      if (!window.turnstile && !turnstileWidget) {
+        error.textContent = "The staging anti-spam check is taking too long. Refresh the page to try again.";
+        submitButton.disabled = true;
+      }
+    }, 10_000);
+  }
 
   function showOrderResult(order) {
     document.querySelector("#order-reference").textContent = order.orderRef;
     document.querySelector("#transfer-amount").textContent = new Intl.NumberFormat("en-CA", {
       style: "currency", currency: "CAD"
     }).format(order.amountCents / 100) + " CAD";
-    document.querySelector("#transfer-email").textContent = order.interacEmail;
-    document.querySelector("#result-copy").textContent = order.emailSent
-      ? `${order.reusedRequest ? "We recovered your existing order. " : ""}Payment instructions were sent to ${order.purchaserEmail}. Use the reference below in your e-Transfer message.`
-      : "Use the details below to send your e-Transfer and include the order reference in its message.";
+    result.querySelector(".kicker").textContent = "VOID — TEST ONLY";
+    result.querySelector("h2").textContent = "Test order created.";
+    document.querySelector("#result-copy").textContent =
+      `${order.reusedRequest ? "We recovered your existing test order. " : ""}This order is stored only in the isolated staging database. No payment is due or accepted. Any certificate issued during testing will be void and have no monetary value.`;
     document.querySelector("#email-status").textContent = order.emailSent
-      ? ""
-      : "We could not send the instruction email. Use the details here and contact Mitch if you need help.";
-    if (order.paymentReported) {
-      document.querySelector("#payment-reported").disabled = true;
-      document.querySelector("#payment-reported").textContent = "Payment reported";
-      document.querySelector("#report-status").textContent =
-        "Mitch has been notified. Your certificate remains inactive until payment is confirmed.";
-    }
+      ? `A test-only confirmation was sent to ${order.purchaserEmail}.`
+      : "The order was saved, but the test email could not be sent. Check the staging email configuration.";
+    document.querySelector("#download-certificate").hidden = false;
+    document.querySelector("#payment-reported").hidden = true;
+    document.querySelector("#report-status").hidden = true;
     result.hidden = false;
   }
+}
+
+function getOrCreateSessionValue(key, create) {
+  const existing = sessionStorage.getItem(key);
+  if (existing) return existing;
+  const value = create();
+  sessionStorage.setItem(key, value);
+  return value;
+}
+
+function randomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function apiError(body) {
+  const error = new Error(body?.error || "The request could not be completed.");
+  error.code = `functions/${body?.code || "internal"}`;
+  return error;
 }
 
 async function copyText(value, button) {

@@ -3,3 +3,11 @@ functions/lib/
 functions/.env*
 functions/.runtimeconfig.json
 _staging-dist/
+worker/.dev.vars
+worker/.dev.vars.*
+!worker/.dev.vars.example
+.wrangler/
+worker/.wrangler/
+worker/node_modules/
+worker/coverage/
+scripts/firebase-admin/node_modules/

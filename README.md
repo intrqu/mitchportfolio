@@ -13,9 +13,9 @@ The hero still life is original AI-generated preview imagery.
 
 ## Gift cards
 
-The public gift-card page is served at `/gift-cards/`. Orders and all privileged
-actions are handled by Firebase callable functions; Firestore access is denied
-to clients, and certificates are regenerated from encrypted Firestore records.
-See [`gift-cards/README.md`](gift-cards/README.md) for
-Firebase setup, configuration, local testing, email setup, and deployment.
+The staging-only gift-card system uses the existing static site with a
+Cloudflare Worker and D1 backend. Firebase Authentication is retained only for
+admin sign-in; certificate codes, email credentials, and balances remain
+server-side. See [`STAGING.md`](STAGING.md) for local tests, safe setup, and
+deployment approval boundaries.
 

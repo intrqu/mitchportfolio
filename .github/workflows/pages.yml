@@ -29,7 +29,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Build sanitized static test site
+      - name: Build Cloudflare-backed test site
+        env:
+          STAGING_FIREBASE_API_KEY: ${{ vars.STAGING_FIREBASE_API_KEY }}
+          STAGING_FIREBASE_AUTH_DOMAIN: ${{ vars.STAGING_FIREBASE_AUTH_DOMAIN }}
+          STAGING_FIREBASE_PROJECT_ID: ${{ vars.STAGING_FIREBASE_PROJECT_ID }}
+          STAGING_FIREBASE_APP_ID: ${{ vars.STAGING_FIREBASE_APP_ID }}
+          STAGING_WORKER_API_URL: ${{ vars.STAGING_WORKER_API_URL }}
+          STAGING_TURNSTILE_SITE_KEY: ${{ vars.STAGING_TURNSTILE_SITE_KEY }}
         run: node scripts/build-staging.mjs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
