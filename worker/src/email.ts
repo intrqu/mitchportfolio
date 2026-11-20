@@ -16,6 +16,11 @@ interface DeliveryRow {
   delivery_status: "sending" | "sent" | "failed";
 }
 
+const STAGING_EMAIL_WARNING = `<div style="background:#5b111b;border:3px solid #e11d48;color:#fff;padding:18px;text-align:center;margin:0 0 24px">
+  <div style="font-size:24px;font-weight:800;letter-spacing:.04em">TEST ONLY — DO NOT SEND MONEY</div>
+  <div style="font-size:16px;font-weight:700;margin-top:8px">Do not initiate an Interac e-Transfer or send funds. This staging system does not accept payments.</div>
+</div>`;
+
 export async function sendEmail(env: Env, input: EmailInput): Promise<boolean> {
   try {
     assertAllowedRecipients(input.to, env.STAGING_ALLOWED_EMAILS);
@@ -63,8 +68,8 @@ export async function sendEmail(env: Env, input: EmailInput): Promise<boolean> {
   const body: Record<string, unknown> = {
     from: env.EMAIL_FROM,
     to: input.to,
-    subject: input.subject,
-    html: input.html
+    subject: `TEST ONLY — DO NOT SEND MONEY: ${input.subject}`,
+    html: `${STAGING_EMAIL_WARNING}${input.html}`
   };
   if (input.attachment) {
     body.attachments = [{
@@ -112,9 +117,9 @@ export async function sendEmail(env: Env, input: EmailInput): Promise<boolean> {
       `).bind(sentAt, sentAt, input.orderId).run();
     }
     return true;
-  } catch (error) {
+  } catch {
     await markDeliveryFailed(env, input, "provider-request-failed");
-    console.error("Resend email request failed.", { type: input.emailType, error });
+    console.error("Resend email request failed.", { type: input.emailType });
     return false;
   }
 }

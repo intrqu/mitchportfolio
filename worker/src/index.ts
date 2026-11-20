@@ -224,23 +224,29 @@ async function sendOrderEmails(order: OrderRow, env: Env): Promise<{
   const orderRef = escapeHtml(order.order_ref);
   const purchaser = escapeHtml(order.purchaser_name);
   const amount = (order.amount_cents / 100).toFixed(2);
+  const interacEmail = escapeHtml(env.STAGING_INTERAC_EMAIL);
   const confirmationEmailSent = await sendEmail(env, {
     orderId: order.id,
     emailType: "order_confirmation",
     idempotencyKey: `staging-order-confirmation-${order.id}`,
     to: [order.purchaser_email],
-    subject: `Test gift card order ${order.order_ref} — VOID`,
-    html: `<p><strong>VOID — TEST ONLY.</strong> Your staging gift card order was received.</p>
-      <p>Order reference: <strong>${orderRef}</strong><br>Test value: $${amount} CAD</p>
-      <p>No payment is due or accepted. An administrator may simulate payment so the staging certificate flow can be tested. Any certificate is void and cannot be redeemed.</p>`
+    subject: `Gift card order ${order.order_ref}`,
+    html: `<p>Your staging gift card test order was received.</p>
+      <p>Order reference: <strong>${orderRef}</strong><br>Test value: <strong>$${amount} CAD</strong></p>
+      <h2>Interac e-Transfer demo details (DO NOT USE)</h2>
+      <p>Demo recipient: <strong>${interacEmail}</strong><br>
+      Demo amount: <strong>$${amount} CAD</strong><br>
+      Demo order reference: <strong>${orderRef}</strong></p>
+      <p>For a real purchase, the order reference would be included in the transfer message. These are sample instructions only: do not send a transfer or any money. No payment is due or accepted, and this staging order cannot receive or reconcile funds.</p>
+      <p>Any certificate generated for this staging order is void and has no value.</p>`
   });
   const adminEmailSent = await sendEmail(env, {
     orderId: order.id,
     emailType: "admin_new_order",
     idempotencyKey: `staging-admin-new-order-${order.id}`,
     to: [...parseEmailAllowlist(env.STAGING_ADMIN_EMAILS)],
-    subject: `Staging test gift card order ${order.order_ref}`,
-    html: `<p>A <strong>VOID — TEST ONLY</strong> gift card order was created.</p>
+    subject: `New test gift card order ${order.order_ref}`,
+    html: `<p>A staging test gift card order was created.</p>
       <p>Reference: ${orderRef}<br>Value: $${amount} CAD<br>Purchaser: ${purchaser} (${escapeHtml(order.purchaser_email)})</p>`
   });
   return { confirmationEmailSent, adminEmailSent };
@@ -277,7 +283,7 @@ async function sendCertificate(
     emailType: "certificate_delivery",
     idempotencyKey,
     to: [certificate.recipient_email],
-    subject: `VOID — TEST ONLY: gift certificate ${order.order_ref}`,
+    subject: `Gift certificate ${order.order_ref}`,
     html: `<p><strong>VOID — TEST ONLY. This certificate has no value and cannot be redeemed.</strong></p>
       <p>A test certificate for ${escapeHtml(certificate.recipient_name)} is attached. It was generated only for the staging website.</p>`,
     attachment: { filename: `${order.order_ref}-VOID-TEST-ONLY.pdf`, content: pdf }
@@ -546,7 +552,7 @@ async function simulatePayment(orderId: string, identity: AdminIdentity, env: En
     emailType: "payment_confirmation",
     idempotencyKey: `staging-payment-confirmation-${orderId}`,
     to: [order.purchaser_email],
-    subject: `VOID — TEST ONLY: payment simulated for ${order.order_ref}`,
+    subject: `Test payment simulation ${order.order_ref}`,
     html: `<p><strong>VOID — TEST ONLY.</strong> An administrator simulated payment for test order ${escapeHtml(order.order_ref)}.</p>
       <p>No real payment was received or accepted.</p>`
   });

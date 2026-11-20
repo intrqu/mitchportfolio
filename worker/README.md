@@ -78,23 +78,48 @@ Firebase Functions, Firestore, or Cloud Storage integration is included.
   plan; the local PDF test uses a 10 ms target
 
 Set these server-only secrets in local `.dev.vars`; deploy them through
-Wrangler's `--secrets-file` option. Keep the Resend key absent until an
-approved non-production sender domain is available:
+Wrangler's `--secrets-file` option. Keep the Resend API key only in the
+Cloudflare Worker secret store (and never in tracked files, GitHub variables,
+or the browser bundle). Staging email is limited to the configured test
+recipient allowlist:
 
 - `TURNSTILE_SECRET_KEY`
 - `CERTIFICATE_ENCRYPTION_KEY` — independent random 32-byte base64 key
 - `RATE_LIMIT_HMAC_KEY` — independent random 32-byte base64 key
 - `STAGING_ALLOWED_EMAILS` — controlled test recipient addresses only
 - `STAGING_ADMIN_EMAILS` — admin addresses, also included in the email allowlist
+- `STAGING_INTERAC_EMAIL` — demonstration recipient shown in order emails;
+  never use the address to send money
+
+Set `RESEND_API_KEY` directly as a Cloudflare Worker secret using the
+Cloudflare dashboard or `wrangler secret put`. It is not required in local
+`.dev.vars` unless you specifically want to send local test email.
 
 Set these Worker variables to staging-only values:
 
-- `EMAIL_FROM`
+- `EMAIL_FROM=Mitch Harsch Tattoo <giftcards@mitchharschtattoo.com>`
 - `TURNSTILE_EXPECTED_HOSTNAME=intrqu.github.io`
 
+The verified Resend sender is enabled for staging. Every message has a
+prominent **TEST ONLY — DO NOT SEND MONEY** subject and body banner. Order
+emails show the exact test amount, order reference, and demonstration Interac
+recipient. Certificate emails attach a **VOID — TEST ONLY** PDF; no real
+payment is accepted and no staging certificate is redeemable.
+
 Never commit `.dev.vars`, add API keys to GitHub variables, or send production
-customer data to this Worker. Do not configure Interac details or production
-credentials.
+customer data to this Worker. Do not add a real payment integration or
+production credentials.
+
+## Live staging email test
+
+1. Submit a test order using an email address in `STAGING_ALLOWED_EMAILS` and
+   complete the staging Turnstile check. Confirm the order email has the test
+   warning, demo recipient, exact amount, and order reference.
+2. Sign in to the staging admin dashboard and simulate payment for that order.
+   Confirm the payment-simulation email and certificate email arrive; the PDF
+   must say **VOID — TEST ONLY**.
+3. Never send an e-Transfer. The displayed Interac address and instructions
+   are demonstration text, and staging does not accept or reconcile money.
 
 ## GitHub Pages configuration
 

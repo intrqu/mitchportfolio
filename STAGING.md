@@ -11,7 +11,9 @@ The Worker is locked to `APP_ENV=staging` and Firebase project
 is requested or accepted. An allowlisted staging administrator can simulate
 payment to test certificate delivery and partial redemption. Every staging
 certificate and PDF says **VOID — TEST ONLY** and has no value. Resend can
-deliver mail only to addresses explicitly allowlisted in Worker configuration.
+deliver staging mail only to addresses explicitly allowlisted in Worker
+configuration. Every email prominently says **TEST ONLY — DO NOT SEND MONEY**;
+the Interac details are demonstration text only.
 
 A staging D1 database has been created and its initial additive schema has
 been applied. The staging Worker is deployed at
@@ -36,9 +38,10 @@ has been enabled.
   signed ID tokens. The Worker verifies Firebase's RS256 signature, issuer,
   audience, expiration, `admin: true` custom claim, and the admin email
   allowlist. Firebase App Check, Cloud Functions, and Firestore are not used.
-- **Email delivery** is disabled while no verified non-production sender
-  domain is available. The Worker will not make Resend requests without both
-  a Resend API key and sender address; email states will report not configured.
+- **Email delivery** uses Resend from the verified sender configured for the
+  staging Worker. The API key remains a Cloudflare Worker secret, and the
+  Worker sends only to explicitly allowlisted test inboxes. Resend quotas and
+  terms may change; verify them before use.
 
 Cloudflare currently offers Workers, D1, and Turnstile free-tier quotas, but
 quotas and plan terms can change. D1/Worker usage above free quotas can fail
@@ -109,14 +112,14 @@ add-on.
 4. **Completed:** The separate Firebase staging project uses Email/Password
    sign-in, authorizes `intrqu.github.io`, has a registered web app, and has a
    test admin with the `admin: true` claim.
-5. **Deferred:** Resend requires a verified sender domain. No separate
-   non-production domain is available, and production DNS must not be changed.
-   Do not configure live email credentials until an approved staging sender
-   domain is available. No email was sent during the live staging test.
-6. **Completed:** Worker secrets and staging-only allowlists are stored with
-   Cloudflare. `RESEND_API_KEY` is intentionally absent; `EMAIL_FROM` is blank,
-   so the Worker makes no email-provider requests. Secrets are not in GitHub
-   or the frontend.
+5. **Completed:** The sender `giftcards@mitchharschtattoo.com` is verified
+   with Resend. The staging Worker uses that sender and its `RESEND_API_KEY`
+   Cloudflare secret; the key is not in source, GitHub, or the frontend.
+   Resend delivery is restricted to the configured test-inbox allowlist.
+6. **In progress:** Add `STAGING_INTERAC_EMAIL` to the ignored local
+   `worker/.dev.vars` as `mitchharsch@gmail.com`, then deploy the Worker
+   configuration. It is a demo destination only; never send money. Do not
+   put it in tracked configuration or GitHub variables.
 7. **Completed:** The staging Worker was deployed on the Free plan. It serves
    `https://mht-giftcards-staging-api.jenfrolics.workers.dev/`. Cloudflare
    Free does not accept a custom CPU limit, so `cpu_ms` is unset; the local PDF
@@ -147,9 +150,9 @@ Never use production credentials or another project.
 
 - The GitHub Pages site is public; `noindex` is not access control. Only
   synthetic data and allowlisted test inboxes belong there.
-- No real Interac address, card payment, Stripe integration, payment webhook,
-  or production certificate is configured. The staging admin action simulates
-  payment only.
+- Interac details in staging emails are demo-only. No real payment, Stripe
+  integration, payment webhook, or redeemable certificate is configured. The
+  staging admin action simulates payment only.
 - Firebase client configuration, the Worker URL, and the Turnstile site key
   are public. Firebase service-account credentials, Resend keys, Turnstile
   secrets, encryption keys, and HMAC keys are not.

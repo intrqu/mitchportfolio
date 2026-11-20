@@ -133,8 +133,15 @@ describe("staging gift card Worker", () => {
     expect(data.orderRef).toMatch(/^MHT-TEST-[0-9A-F]{16}$/);
     expect(data.accessToken).toBe(body.accessToken);
     expect(sentEmails).toHaveLength(2);
-    expect(sentEmails.every((email) => String(email.body.subject).includes("TEST") ||
-      String(email.body.subject).includes("VOID"))).toBe(true);
+    expect(sentEmails.every((email) =>
+      String(email.body.subject).startsWith("TEST ONLY — DO NOT SEND MONEY:") &&
+      String(email.body.html).includes("TEST ONLY — DO NOT SEND MONEY")
+    )).toBe(true);
+    expect(String(sentEmails[0].body.html)).toContain("Order reference:");
+    expect(String(sentEmails[0].body.html)).toContain(data.orderRef);
+    expect(String(sentEmails[0].body.html)).toContain("test-interac@example.com");
+    expect(String(sentEmails[0].body.html)).toContain("$100.00 CAD");
+    expect(String(sentEmails[0].body.html)).toContain("transfer message");
 
     const retry = await callApi("/api/orders", {
       body: { ...body, turnstileToken: "fresh-test-turnstile-token" },
@@ -293,7 +300,16 @@ describe("staging gift card Worker", () => {
     expect(issued.confirmationEmailSent).toBe(true);
     expect(issued.redemptionCode).toMatch(/^MHTTEST[0-9A-F]{32}$/);
     expect(sentEmails).toHaveLength(4);
+    expect(sentEmails.every((email) =>
+      String(email.body.subject).startsWith("TEST ONLY — DO NOT SEND MONEY:") &&
+      String(email.body.html).includes("TEST ONLY — DO NOT SEND MONEY")
+    )).toBe(true);
     const certificateEmail = sentEmails.find((email) => Array.isArray(email.body.attachments));
+    expect(certificateEmail).toBeDefined();
+    expect(String(certificateEmail?.body.subject)).toContain("Gift certificate");
+    expect(String(certificateEmail?.body.html)).toContain("VOID — TEST ONLY");
+    expect((certificateEmail?.body.attachments as Array<{ filename: string }>)[0].filename)
+      .toContain("VOID-TEST-ONLY.pdf");
     const attachment = (certificateEmail?.body.attachments as Array<{ content: string }>)[0];
     expect(atob(attachment.content).startsWith("%PDF-")).toBe(true);
 

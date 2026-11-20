@@ -11,6 +11,7 @@ export default defineConfig(async () => {
         miniflare: {
           bindings: {
             EMAIL_FROM: "Mitch Harsch Tattoo <test@example.com>",
+            STAGING_INTERAC_EMAIL: "test-interac@example.com",
             STAGING_ALLOWED_EMAILS: "test@example.com,admin@example.com",
             STAGING_ADMIN_EMAILS: "admin@example.com",
             RESEND_API_KEY: "test-resend-key",

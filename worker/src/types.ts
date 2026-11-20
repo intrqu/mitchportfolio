@@ -7,6 +7,7 @@ export interface Env {
   PUBLIC_SITE_URL: string;
   TURNSTILE_EXPECTED_HOSTNAME: string;
   EMAIL_FROM: string;
+  STAGING_INTERAC_EMAIL: string;
   STAGING_ALLOWED_EMAILS: string;
   STAGING_ADMIN_EMAILS: string;
   RESEND_API_KEY: string;
