@@ -1,0 +1,58 @@
+.staging-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 1rem;
+  padding: 0.65rem 1rem;
+  background: #e6bd67;
+  color: #17130b;
+  font: 600 0.9rem/1.35 Inter, sans-serif;
+  text-align: center;
+  box-shadow: 0 2px 12px #0008;
+}
+
+.staging-disabled-form,
+#certificate-search-note {
+  padding: 1.25rem;
+  border: 1px solid #574c3a;
+  color: #ded6c9;
+  background: #171412;
+}
+
+.staging-certificate {
+  position: relative;
+  margin-top: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  overflow: hidden;
+  border: 1px solid #8e7547;
+  background: radial-gradient(ellipse at top, #3a3023, #171412 70%);
+  text-align: center;
+}
+
+.staging-certificate h3 {
+  margin-top: 0;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+}
+
+.staging-certificate .staging-void {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 2px solid #df7770;
+  color: #ffaaa1;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.staging-demo-notice {
+  color: #e6bd67;
+}
+
+@media (max-width: 700px) {
+  .staging-banner {
+    font-size: 0.78rem;
+  }
+}

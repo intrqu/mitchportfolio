@@ -1,0 +1,52 @@
+name: Deploy safe staging site
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages-staging
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.repository == 'intrqu/mitchportfolio-staging' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - name: Check out staging source
+        uses: actions/checkout@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build sanitized static test site
+        run: node scripts/build-staging.mjs
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _staging-dist
+
+  deploy:
+    if: github.repository == 'intrqu/mitchportfolio-staging' && github.ref == 'refs/heads/staging'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Publish staging site
+        id: deployment
+        uses: actions/deploy-pages@v4

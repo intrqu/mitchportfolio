@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#100e0d">
+  <title>Gift Card Admin | Mitch Harsch Tattoo</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../style.css">
+  <script src="../../firebase-config.js"></script>
+  <script type="module" src="../../admin-gift-cards.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header id="top"><a class="brand" href="../../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a>
+    <a class="outline" href="../../gift-cards/">Gift card page</a></header>
+  <main id="main" class="wrap admin-page">
+    <section class="admin-heading"><p class="kicker">Private area</p><h1>Gift Card <span class="tattoo">Management</span></h1>
+      <p class="muted">Confirm e-Transfer payments only after checking the bank account. Customer reports are not payment confirmation.</p></section>
+    <p id="admin-error" class="gift-error" role="alert" aria-live="assertive"></p>
+    <form id="admin-login" class="admin-panel">
+      <h2>Administrator sign in</h2>
+      <label for="admin-email">Email</label><input id="admin-email" type="email" autocomplete="username" required>
+      <label for="admin-password">Password</label><input id="admin-password" type="password" autocomplete="current-password" required>
+      <button class="solid" type="submit">Sign in</button>
+    </form>
+
+    <section id="admin-dashboard" hidden>
+      <div class="admin-toolbar"><p id="admin-identity"></p><button id="admin-signout" class="outline" type="button">Sign out</button></div>
+      <section class="admin-panel">
+        <div class="admin-section-heading"><h2>Orders</h2>
+          <label for="order-filter">Filter</label>
+          <select id="order-filter">
+            <option value="all">All orders</option><option value="pending">Pending payment</option>
+            <option value="paid">Paid, not issued</option><option value="issued">Issued</option>
+            <option value="partial">Partially redeemed</option><option value="redeemed">Fully redeemed</option>
+          </select>
+          <button id="refresh-orders" class="outline" type="button">Refresh</button>
+        </div>
+        <div id="order-list" class="order-list"></div>
+        <button id="load-more-orders" class="outline" type="button" hidden>Load older orders</button>
+      </section>
+      <section class="admin-panel">
+        <h2>Find a certificate</h2>
+        <form id="certificate-search" class="admin-inline">
+          <label for="certificate-code">Redemption code</label>
+          <input id="certificate-code" autocomplete="off" required>
+          <button class="solid" type="submit">Look up</button>
+        </form>
+        <div id="certificate-details" hidden></div>
+      </section>
+    </section>
+  </main>
+  <footer><div class="wrap footer"><a class="brand" href="../../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a></div></footer>
+</body>
+</html>

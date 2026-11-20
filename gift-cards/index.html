@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Purchase a Mitch Harsch Tattoo digital gift certificate.">
+  <meta name="theme-color" content="#100e0d">
+  <link rel="canonical" href="https://mitchharschtattoo.com/gift-cards/">
+  <title>Gift Cards | Mitch Harsch Tattoo</title>
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <script src="../firebase-config.js"></script>
+  <script type="module" src="../gift-cards.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header id="top">
+    <a class="brand" href="../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a>
+    <nav aria-label="Main navigation"><a href="../#work">Portfolio</a><a href="../flash.html">Flash</a>
+      <a href="./" aria-current="page">Gift Cards</a><a class="outline" href="../#booking">Booking <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main id="main" class="wrap gift-page">
+    <section class="gift-intro" aria-labelledby="gift-title">
+      <p class="kicker"><span aria-hidden="true">✦</span> Give a little darkness</p>
+      <h1 id="gift-title">Gift <span class="tattoo">Certificates</span></h1>
+      <p class="muted">A tattoo gift for someone who loves the strange and macabre.</p>
+    </section>
+
+    <div class="gift-layout">
+      <form id="gift-order" class="gift-form">
+        <fieldset>
+          <legend>Choose an amount</legend>
+          <div class="amount-options">
+            <label><input type="radio" name="preset" value="5000"><span>$50</span></label>
+            <label><input type="radio" name="preset" value="10000" checked><span>$100</span></label>
+            <label><input type="radio" name="preset" value="15000"><span>$150</span></label>
+            <label><input type="radio" name="preset" value="20000"><span>$200</span></label>
+          </div>
+          <label for="custom-amount">Or enter a custom amount (CAD)</label>
+          <div class="currency-input"><span aria-hidden="true">$</span>
+            <input id="custom-amount" name="customAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Custom amount" aria-describedby="amount-help">
+          </div>
+          <p id="amount-help" class="form-note">The total shown is the exact amount to send by e-Transfer.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Who is this for?</legend>
+          <div class="choice-row">
+            <label><input type="radio" name="recipientType" value="self" checked> Me</label>
+            <label><input type="radio" name="recipientType" value="other"> Someone else</label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Your details</legend>
+          <label for="buyer-name">Your name</label>
+          <input id="buyer-name" name="buyerName" autocomplete="name" maxlength="120" required>
+          <label for="buyer-email">Your email</label>
+          <input id="buyer-email" name="buyerEmail" type="email" autocomplete="email" maxlength="254" required>
+        </fieldset>
+
+        <fieldset id="recipient-details" hidden>
+          <legend>Recipient details</legend>
+          <label for="recipient-name">Recipient's name</label>
+          <input id="recipient-name" name="recipientName" autocomplete="off" maxlength="120">
+          <label for="recipient-email">Recipient's email</label>
+          <input id="recipient-email" name="recipientEmail" type="email" autocomplete="off" maxlength="254">
+        </fieldset>
+
+        <fieldset>
+          <legend>Personal message <span class="muted">(optional)</span></legend>
+          <label for="gift-message">Add a message to the certificate</label>
+          <textarea id="gift-message" name="message" rows="3" maxlength="500"></textarea>
+        </fieldset>
+
+        <fieldset>
+          <legend>Payment method</legend>
+          <label class="payment-choice"><input type="radio" name="paymentMethod" value="interac" checked>
+            <span><strong>Interac e-Transfer</strong><small>No additional fee · Instructions by email</small></span></label>
+          <label class="payment-choice payment-unavailable"><input type="radio" name="paymentMethod" value="card" disabled>
+            <span><strong>Credit card</strong><small>Not available yet · Secure Stripe checkout will be added separately</small></span></label>
+        </fieldset>
+
+        <div class="order-total"><span>Order total</span><strong id="total">$100.00 CAD</strong></div>
+        <p id="order-error" class="gift-error" role="alert" aria-live="assertive"></p>
+        <button id="submit-order" class="solid gift-submit" type="submit">Place e-Transfer order</button>
+        <p class="form-note">Your certificate is issued after Mitch confirms the payment.</p>
+      </form>
+
+      <aside class="gift-aside">
+        <span class="gift-ornament" aria-hidden="true">✧</span>
+        <p class="kicker">A thoughtful offering</p>
+        <h2>Made for the macabre.</h2>
+        <p>Gift certificates can be applied toward a tattoo with Mitch Harsch in East Vancouver.</p>
+        <p>Interac orders remain inactive until the payment is confirmed. No certificate code is created before then.</p>
+        <a href="../#booking">Questions? Send an inquiry ↗</a>
+      </aside>
+    </div>
+
+    <section id="order-result" class="order-result" aria-live="polite" hidden>
+      <p class="kicker">Order received</p>
+      <h2>One step remains.</h2>
+      <p id="result-copy"></p>
+      <dl class="payment-details">
+        <div><dt>Order reference</dt><dd><code id="order-reference"></code>
+          <button type="button" class="copy-button" id="copy-reference">Copy order number</button></dd></div>
+        <div><dt>Send exactly</dt><dd id="transfer-amount"></dd></div>
+        <div><dt>Send to</dt><dd><span id="transfer-email"></span>
+          <button type="button" class="copy-button" id="copy-email">Copy email</button></dd></div>
+        <div><dt>Message</dt><dd>Include your order reference in the e-Transfer message.</dd></div>
+      </dl>
+      <p id="email-status" class="form-note"></p>
+      <p class="form-note">The certificate will be issued after payment confirmation. Reporting your transfer does not activate it.</p>
+      <button id="payment-reported" class="outline" type="button">I've sent my payment</button>
+      <p id="report-status" class="form-note" role="status"></p>
+    </section>
+  </main>
+  <footer><div class="wrap footer"><a class="brand" href="../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a>
+    <a href="https://www.instagram.com/mitchharsch/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
+    <a href="../#booking">Contact Mitch</a></div></footer>
+</body>
+</html>
