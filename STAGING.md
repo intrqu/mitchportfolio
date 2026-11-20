@@ -14,8 +14,10 @@ certificate and PDF says **VOID — TEST ONLY** and has no value. Resend can
 deliver mail only to addresses explicitly allowlisted in Worker configuration.
 
 A staging D1 database has been created and its initial additive schema has
-been applied. The Worker and public site have not yet been deployed; no paid
-service has been enabled.
+been applied. The staging Worker is deployed at
+<https://mht-giftcards-staging-api.jenfrolics.workers.dev/> and the Pages site
+is live at <https://intrqu.github.io/mitchportfolio-staging/>. No paid service
+has been enabled.
 
 ## Architecture and services
 
@@ -91,40 +93,38 @@ configuration for the staging Firebase web app, the deployed Worker URL, and
 the Turnstile site key. These values are not secrets. It rejects non-staging
 Firebase projects and Worker URLs outside `workers.dev` (or local development).
 
-## Manual setup sequence (not performed)
+## Setup status
 
-Do these steps one at a time. Stop if a console asks for a payment method,
-paid plan, production DNS change, or paid add-on.
+The following staging-only setup is complete except where noted. Stop if a
+console asks for a payment method, paid plan, production DNS change, or paid
+add-on.
 
 1. **Completed:** Cloudflare account created without adding a billing card or
    purchasing a plan.
-2. **Completed:** D1 database `mht-giftcards-staging` created. Its ID is set in
-   `worker/wrangler.toml`; its schema has not been migrated.
-3. **Completed:** Turnstile widget created for `intrqu.github.io`. Its public
-   site key still needs to be added as a GitHub Actions variable; its secret
-   key belongs in Worker secrets. Do not reuse a production widget.
+2. **Completed:** D1 database `mht-giftcards-staging` created; its additive
+   initial schema is applied.
+3. **Completed:** Turnstile widget created for `intrqu.github.io`. The public
+   site key is a GitHub Actions variable; its secret key is stored only as a
+   Worker secret. Do not reuse a production widget.
 4. **Completed:** The separate Firebase staging project uses Email/Password
    sign-in, authorizes `intrqu.github.io`, has a registered web app, and has a
    test admin with the `admin: true` claim.
 5. **Deferred:** Resend requires a verified sender domain. No separate
    non-production domain is available, and production DNS must not be changed.
    Do not configure live email credentials until an approved staging sender
-   domain is available. Tests continue to mock email delivery.
-6. Configure Cloudflare Worker variables and secrets. Keep `RESEND_API_KEY`,
-   `TURNSTILE_SECRET_KEY`, `CERTIFICATE_ENCRYPTION_KEY`, and
-   `RATE_LIMIT_HMAC_KEY` only in Worker secrets. Never put them in GitHub,
-   Pages, or browser code. Use separate random 32-byte base64 keys for the
-   encryption and HMAC secrets.
-7. Run local tests and inspect configuration. A public Worker deployment,
-   remote D1 migration, or Pages publication requires separate explicit
-   approval. Do not run `wrangler deploy` or `wrangler d1 ... --remote` before
-   that approval.
-8. After Worker deployment is approved and available, add these public GitHub
-   Actions **variables** to `intrqu/mitchportfolio-staging`:
-   `STAGING_WORKER_API_URL`, `STAGING_TURNSTILE_SITE_KEY`,
-   `STAGING_FIREBASE_API_KEY`, `STAGING_FIREBASE_AUTH_DOMAIN`,
-   `STAGING_FIREBASE_PROJECT_ID`, and `STAGING_FIREBASE_APP_ID`. The Pages
-   workflow only builds for that staging repository and branch.
+   domain is available. No email was sent during the live staging test.
+6. **Completed:** Worker secrets and staging-only allowlists are stored with
+   Cloudflare. `RESEND_API_KEY` is intentionally absent; `EMAIL_FROM` is blank,
+   so the Worker makes no email-provider requests. Secrets are not in GitHub
+   or the frontend.
+7. **Completed:** The staging Worker was deployed on the Free plan. It serves
+   `https://mht-giftcards-staging-api.jenfrolics.workers.dev/`. Cloudflare
+   Free does not accept a custom CPU limit, so `cpu_ms` is unset; the local PDF
+   test retains a 10 ms target.
+8. **Completed:** GitHub Actions public variables are set and the staging Pages
+   workflow deployed `https://intrqu.github.io/mitchportfolio-staging/`.
+   Future Pages deployments must remain limited to
+   `intrqu/mitchportfolio-staging` and its `staging` branch.
 
 ### Firebase admin claim tool
 
@@ -134,11 +134,14 @@ Credentials authorized for the staging project:
 ```sh
 npm install --prefix scripts/firebase-admin
 gcloud auth application-default login
+gcloud auth application-default set-quota-project mht-giftcards-staging
 npm run --prefix scripts/firebase-admin set-admin-claim -- STAGING_AUTH_UID
 ```
 
-The helper hard-codes `mht-giftcards-staging`; never use production credentials
-or another project.
+The quota-project command only updates local ADC quota metadata; it does not
+enable Firebase billing. The helper uses Firebase Admin's modular API,
+hard-codes `mht-giftcards-staging`, and verifies the claim after setting it.
+Never use production credentials or another project.
 
 ## Important safety notes
 
