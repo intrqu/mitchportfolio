@@ -213,7 +213,8 @@ function loadTurnstileScript() {
 
 async function submitOrder() {
   setError("");
-  if (!orderingEnabled || submitting) {
+  if (submitting || activeOrder) return;
+  if (!orderingEnabled) {
     setUnavailable(
       "Online ordering is temporarily disabled.",
       "No order can be created right now. No payment is due. Do not send money."

@@ -119,6 +119,11 @@ function addGiftCardPromo(html) {
       </div>
     </section>
 `;
+  const publishedStylesheet = '<link rel="stylesheet" href="production-home.css">';
+  const publishedNavLink = '<a href="gift-cards/">Gift Cards</a>';
+  if (html.includes(publishedStylesheet) && html.includes(publishedNavLink) && html.replace(/\r\n/g, "\n").includes(section)) {
+    return html;
+  }
   if ([stylesheet, nav, booking].some((marker) => !html.includes(marker)) ||
       html.includes('href="gift-cards/"')) {
     throw new Error("The production homepage could not be safely extended with the gift-card CTA.");

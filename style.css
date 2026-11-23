@@ -165,7 +165,7 @@ nav a:hover {
 	display: grid;
 	align-items: center;
 	min-height: clamp(570px, 77svh, 850px);
-	--hero-image: url("assets/hero-desktop.jpg");
+	--hero-image: url("assets/logo-horizontal.png");
 	border-bottom: 1px solid var(--edge);
 	background:
 		linear-gradient(
@@ -442,7 +442,7 @@ dialog p {
 	}
 	.hero {
 		min-height: 590px;
-		--hero-image: url("assets/hero-mobile");
+		--hero-image: url("assets/logo-horizontal.png");
 		background-position: 61% center;
 	}
 	.hero-inner {
@@ -506,4 +506,10 @@ dialog p {
 }
 #instagram a[href^="https://elfsight.com/instagram-feed-instashow/"] {
 	opacity: 0.7;
+}
+
+.brand img {
+	display: block;
+	max-height: 2.75rem;
+	width: auto;
 }
