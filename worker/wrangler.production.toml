@@ -10,9 +10,9 @@ PUBLIC_SITE_ORIGIN = "https://mitchharschtattoo.com"
 PUBLIC_SITE_URL = "https://mitchharschtattoo.com/"
 TURNSTILE_EXPECTED_HOSTNAME = "mitchharschtattoo.com"
 EMAIL_FROM = "Mitch Harsch Tattoo <giftcards@mitchharschtattoo.com>"
-ORDERS_ENABLED = "false"
+ORDERS_ENABLED = "true"
 MAX_ORDERS_PER_DAY = "20"
-MAX_ORDER_AMOUNT_CENTS = "0"
+MAX_ORDER_AMOUNT_CENTS = "50000"
 EMAIL_DAILY_LIMIT = "80"
 
 [[d1_databases]]
