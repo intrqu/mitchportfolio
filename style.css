@@ -109,6 +109,11 @@ figcaption small,
 	font-size: 1.12rem;
 	line-height: 1.2;
 }
+.brand img {
+	display: block;
+	max-height: 2.75rem;
+	width: auto;
+}
 .brand small,
 .mark,
 .kicker,
@@ -179,7 +184,20 @@ nav a:hover {
 	background-position: center;
 	background-size: cover;
 }
+.hero-logo {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	opacity: 0.85;
+	z-index: 0;
+	mix-blend-mode: soft-light;
+}
 .hero-inner {
+	position: relative;
+	z-index: 1;
 	padding-block: 4rem;
 }
 .kicker {
@@ -508,350 +526,8 @@ dialog p {
 	opacity: 0.7;
 }
 
-/* Gift cards */
-.gift-page {
-	padding-block: clamp(2.5rem, 7vw, 6rem);
-}
-.gift-intro {
-	max-width: 760px;
-	margin: 0 auto clamp(2rem, 5vw, 4rem);
-	text-align: center;
-}
-.gift-intro h1 {
-	margin: 1.2rem 0 1.6rem;
-	font-size: clamp(4rem, 10vw, 8rem);
-	line-height: 0.85;
-}
-.gift-intro .tattoo {
-	display: inline;
-	margin: 0;
-	font-size: inherit;
-	letter-spacing: inherit;
-}
-.gift-layout {
-	display: grid;
-	grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.65fr);
-	gap: clamp(1.5rem, 5vw, 4rem);
-	align-items: start;
-}
-.gift-form,
-.gift-aside,
-.order-result {
-	border: 1px solid var(--edge);
-	background: linear-gradient(145deg, rgb(35 59 46 / 18%), transparent 58%), #141512;
-	padding: clamp(1rem, 3vw, 2rem);
-}
-.gift-form {
-	display: grid;
-	gap: 1.5rem;
-}
-.gift-form fieldset {
-	display: grid;
-	gap: 0.55rem;
-	min-width: 0;
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
-.gift-form legend {
-	width: 100%;
-	margin-bottom: 0.6rem;
-	padding-bottom: 0.45rem;
-	border-bottom: 1px solid var(--edge);
-	font: 600 1.2rem var(--label);
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-}
-.amount-options {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 0.55rem;
-	margin-bottom: 0.5rem;
-}
-.amount-options label,
-.choice-row label {
-	position: relative;
-}
-.amount-options input {
-	position: absolute;
-	opacity: 0;
-}
-.amount-options span {
-	display: grid;
-	place-items: center;
-	min-height: 48px;
-	border: 1px solid var(--edge);
-	font-family: var(--label);
-	font-size: 1.2rem;
-}
-.amount-options input:checked + span {
-	border-color: var(--accent);
-	background: var(--forest);
-}
-.amount-options input:focus-visible + span {
-	outline: 2px solid var(--accent);
-	outline-offset: 3px;
-}
-.currency-input {
-	position: relative;
-}
-.currency-input > span {
-	position: absolute;
-	top: 50%;
-	left: 0.75rem;
-	transform: translateY(-50%);
-	color: var(--muted);
-}
-.currency-input input {
-	width: 100%;
-	padding-left: 1.7rem;
-}
-.choice-row {
-	display: flex;
-	gap: 1.2rem;
-	flex-wrap: wrap;
-}
-.choice-row label,
-.payment-choice {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.6rem;
-}
-.gift-form input[type="radio"] {
-	accent-color: var(--accent);
-	margin-top: 0.4rem;
-}
-.payment-choice {
-	padding: 0.75rem;
-	border: 1px solid var(--edge);
-}
-.payment-choice span {
-	display: grid;
-	gap: 0.15rem;
-}
-.payment-choice small,
-.form-note {
-	color: var(--muted);
-	font-size: 0.83rem;
-}
-.payment-unavailable {
-	opacity: 0.58;
-}
-.order-total {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 1rem;
-	padding-top: 1rem;
-	border-top: 1px solid var(--edge);
-}
-.order-total strong {
-	color: var(--accent);
-	font: 600 1.45rem var(--label);
-}
-.gift-submit {
-	width: 100%;
-	min-height: 50px;
-}
-.gift-submit:disabled,
-.order-result button:disabled {
-	cursor: wait;
-	opacity: 0.65;
-}
-.gift-error {
-	margin: 0;
-	color: #ffb6a8;
-}
-.gift-aside {
-	position: relative;
-	overflow: hidden;
-	padding-top: 3rem;
-}
-.gift-aside h2,
-.order-result h2 {
-	font-size: clamp(2.6rem, 5vw, 4rem);
-}
-.gift-aside p:not(.kicker) {
-	color: var(--muted);
-}
-.gift-aside a,
-.copy-button {
-	color: var(--accent);
-	text-decoration: underline;
-	text-underline-offset: 0.2em;
-}
-.gift-ornament {
-	position: absolute;
-	top: -0.5rem;
-	right: 1.3rem;
-	color: var(--accent);
-	font-size: 4rem;
-}
-.order-result {
-	margin-top: 2rem;
-	scroll-margin-top: 2rem;
-}
-.payment-details {
-	display: grid;
-	gap: 0.8rem;
-	margin: 1.5rem 0;
-}
-.payment-details > div {
-	display: grid;
-	grid-template-columns: minmax(7rem, 0.4fr) minmax(0, 1fr);
-	gap: 0.5rem 1rem;
-	padding-bottom: 0.8rem;
-	border-bottom: 1px solid rgb(121 98 76 / 55%);
-}
-.payment-details dt {
-	color: var(--muted);
-}
-.payment-details dd {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	flex-wrap: wrap;
-	margin: 0;
-	overflow-wrap: anywhere;
-}
-.payment-details code {
-	color: var(--accent);
-	font-size: 1.1rem;
-}
-.copy-button {
-	padding: 0.15rem 0;
-	border: 0;
-	background: none;
-	font-size: 0.85rem;
-}
-@media (max-width: 700px) {
-	.gift-layout {
-		grid-template-columns: 1fr;
-	}
-	.gift-aside {
-		order: -1;
-	}
-}
-@media (max-width: 450px) {
-	.amount-options {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-	.payment-details > div {
-		grid-template-columns: 1fr;
-		gap: 0.2rem;
-	}
-}
-
-/* Gift card administration */
-.admin-page {
-	padding-block: clamp(2rem, 6vw, 5rem);
-}
-.admin-heading {
-	max-width: 800px;
-	margin-bottom: 2rem;
-}
-.admin-heading h1 {
-	margin: 1rem 0;
-	font-size: clamp(3.5rem, 8vw, 6.5rem);
-	line-height: 0.9;
-}
-.admin-heading .tattoo {
-	display: inline;
-	margin: 0;
-	font-size: inherit;
-	letter-spacing: inherit;
-}
-.admin-panel {
-	display: grid;
-	gap: 0.7rem;
-	margin-block: 1.5rem;
-	padding: clamp(1rem, 3vw, 2rem);
-	border: 1px solid var(--edge);
-	background: linear-gradient(145deg, rgb(35 59 46 / 18%), transparent 58%), #141512;
-}
-.admin-panel h2 {
-	margin-bottom: 0.8rem;
-	font-size: clamp(2.2rem, 4vw, 3.5rem);
-}
-.admin-toolbar,
-.admin-section-heading,
-.admin-actions {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-	flex-wrap: wrap;
-}
-.admin-toolbar p {
-	color: var(--muted);
-}
-.admin-section-heading h2 {
-	margin: 0;
-}
-.admin-section-heading select {
-	min-height: 44px;
-	padding: 0.45rem;
-	border: 1px solid var(--edge);
-	background: var(--bg);
-	color: var(--ink);
-	font: inherit;
-}
-.order-list {
-	display: grid;
-	gap: 0.8rem;
-}
-.order-card {
-	padding: 1rem;
-	border: 1px solid var(--edge);
-}
-.order-card h3,
-#certificate-details h3 {
-	margin: 0;
-	font: 600 1.2rem var(--label);
-	letter-spacing: 0.05em;
-}
-.order-card p {
-	margin: 0.45rem 0;
-	overflow-wrap: anywhere;
-}
-.admin-actions {
-	justify-content: flex-start;
-	margin-top: 0.8rem;
-}
-.admin-inline {
-	display: flex;
-	align-items: end;
-	gap: 0.7rem;
-	flex-wrap: wrap;
-}
-.admin-inline label {
-	display: grid;
-	gap: 0.35rem;
-}
-.admin-inline input {
-	min-height: 44px;
-}
-#certificate-details {
-	margin-top: 1.2rem;
-	padding-top: 1rem;
-	border-top: 1px solid var(--edge);
-}
-#certificate-details > p {
-	overflow-wrap: anywhere;
-}
-.redemption-history {
-	padding-left: 1.25rem;
-	color: var(--muted);
-}
-.gift-success {
-	color: var(--accent);
-}
-@media (max-width: 520px) {
-	.admin-inline {
-		align-items: stretch;
-		flex-direction: column;
-	}
-	.admin-inline button {
-		align-self: start;
-	}
+.brand img {
+	display: block;
+	max-height: 2.75rem;
+	width: auto;
 }
