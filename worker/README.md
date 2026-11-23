@@ -63,6 +63,11 @@ idempotency keys and stored delivery state.
 No PDF objects are stored outside D1. No Stripe, Interac payment, webhook,
 Firebase Functions, Firestore, or Cloud Storage integration is included.
 
+The separate production Worker preparation is documented in
+[`PRODUCTION_SETUP.md`](PRODUCTION_SETUP.md). It uses another Worker config,
+D1 database, Firebase project, and local test suite. Do not use the staging
+`.dev.vars` values as production credentials.
+
 ## Configuration
 
 `wrangler.toml` contains safe staging defaults and placeholders:

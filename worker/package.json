@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --local",
-    "test": "vitest run",
+    "test": "npm run test:staging && npm run test:production",
+    "test:staging": "vitest run --config vitest.config.ts",
+    "test:production": "vitest run --config vitest.production.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

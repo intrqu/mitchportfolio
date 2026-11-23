@@ -1,0 +1,33 @@
+name: Prepare production Pages artifact (no publish)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'intrqu/mitchportfolio' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - name: Check out production source
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build and verify production admin artifact
+        env:
+          PRODUCTION_FIREBASE_API_KEY: ${{ vars.PRODUCTION_FIREBASE_API_KEY }}
+          PRODUCTION_FIREBASE_APP_ID: ${{ vars.PRODUCTION_FIREBASE_APP_ID }}
+          PRODUCTION_WORKER_API_URL: ${{ vars.PRODUCTION_WORKER_API_URL }}
+          PRODUCTION_TURNSTILE_SITE_KEY: ${{ vars.PRODUCTION_TURNSTILE_SITE_KEY }}
+        run: node scripts/build-production-pages.mjs
+      - name: Upload Pages artifact for review only
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _production-pages-dist

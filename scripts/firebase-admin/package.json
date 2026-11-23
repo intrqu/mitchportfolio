@@ -3,7 +3,8 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "set-admin-claim": "node set-admin-claim.cjs"
+    "set-admin-claim": "node set-admin-claim.cjs",
+    "set-production-admin-claim": "node set-production-admin-claim.cjs"
   },
   "dependencies": {
     "firebase-admin": "^14.5.1"
