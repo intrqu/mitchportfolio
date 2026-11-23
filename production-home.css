@@ -1,0 +1,29 @@
+.gift-card-promo {
+  scroll-margin-top: 5rem;
+}
+.gift-card-promo__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--edge);
+  background: linear-gradient(145deg, rgb(35 59 46 / 18%), transparent 58%), #141512;
+}
+.gift-card-promo__panel h2 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: clamp(2.6rem, 6vw, 4.2rem);
+}
+.gift-card-promo__notice {
+  margin: 0 0 1rem;
+  color: var(--muted);
+}
+.gift-card-promo__cta {
+  justify-self: start;
+}
+@media (max-width: 600px) {
+  .gift-card-promo__panel {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}

@@ -1,0 +1,196 @@
+.admin-page {
+  padding-block: clamp(2rem, 6vw, 5rem);
+}
+.admin-heading {
+  max-width: 800px;
+  margin-bottom: 2rem;
+}
+.admin-heading h1 {
+  margin: 1rem 0;
+  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  line-height: 0.9;
+}
+.admin-heading .tattoo {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+  letter-spacing: inherit;
+}
+.admin-panel {
+  display: grid;
+  gap: 0.7rem;
+  margin-block: 1.5rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--edge);
+  background: linear-gradient(145deg, rgb(35 59 46 / 18%), transparent 58%), #141512;
+}
+.admin-panel h2 {
+  margin-bottom: 0.8rem;
+  font-size: clamp(2.2rem, 4vw, 3.5rem);
+}
+#admin-login {
+  width: min(100%, 38rem);
+}
+#admin-login input,
+.admin-section-heading select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--edge);
+  background: var(--bg);
+  color: var(--ink);
+}
+#admin-login button {
+  justify-self: start;
+}
+.admin-toolbar,
+.admin-section-heading,
+.admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.admin-toolbar p {
+  color: var(--muted);
+}
+.admin-section-heading h2 {
+  margin: 0;
+}
+.admin-section-heading select {
+  font: inherit;
+}
+.order-list {
+  display: grid;
+  gap: 0.8rem;
+}
+.order-card {
+  padding: 1rem;
+  border: 1px solid var(--edge);
+}
+.order-card h3,
+#certificate-details h3 {
+  margin: 0;
+  font: 600 1.2rem var(--label);
+  letter-spacing: 0.05em;
+}
+.order-card p {
+  margin: 0.45rem 0;
+  overflow-wrap: anywhere;
+}
+.admin-actions {
+  justify-content: flex-start;
+  margin-top: 0.8rem;
+}
+.admin-inline {
+  display: flex;
+  align-items: end;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.admin-inline label {
+  display: grid;
+  gap: 0.35rem;
+}
+.admin-inline input {
+  min-height: 44px;
+}
+#certificate-details {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--edge);
+}
+#certificate-details > p {
+  overflow-wrap: anywhere;
+}
+.redemption-history {
+  padding-left: 1.25rem;
+  color: var(--muted);
+}
+.gift-success {
+  color: var(--accent);
+}
+.production-admin-local-note {
+  margin-block: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--edge);
+  background: linear-gradient(145deg, rgb(35 59 46 / 18%), transparent 58%), #141512;
+  color: var(--muted);
+}
+
+.production-admin-label {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--edge);
+  color: var(--accent);
+  font: 600 0.82rem var(--label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.production-admin-notice {
+  margin-block: 1rem;
+}
+.production-order-note {
+  width: min(100%, 38rem);
+  min-height: 3rem;
+}
+.production-redemption-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  align-items: end;
+  gap: 0.9rem;
+  margin-block: 1rem;
+}
+.production-redemption-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+.production-redemption-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem;
+  border: 1px solid var(--edge);
+  background: var(--bg);
+  color: var(--ink);
+}
+.production-balance {
+  color: var(--accent);
+  font-size: 1.15rem;
+}
+.production-history-entry {
+  overflow-wrap: anywhere;
+}
+.production-admin-warning {
+  border-left: 3px solid var(--edge);
+  padding-left: 1rem;
+}
+@media (max-width: 600px) {
+  .admin-heading h1 {
+    font-size: clamp(2.8rem, 13vw, 4.5rem);
+  }
+  .admin-panel {
+    padding: 1rem;
+  }
+  .admin-section-heading {
+    align-items: stretch;
+  }
+  .production-admin-section-heading {
+    align-items: stretch;
+  }
+  .production-admin-section-heading select {
+    width: 100%;
+  }
+  .admin-section-heading select {
+    width: 100%;
+  }
+}
+@media (max-width: 520px) {
+  .admin-inline {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .admin-inline button {
+    align-self: start;
+  }
+}

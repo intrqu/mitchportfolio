@@ -1,0 +1,22 @@
+name = "mht-giftcards-api"
+main = "src/production/index.ts"
+compatibility_date = "2026-11-20"
+workers_dev = true
+
+[vars]
+APP_ENV = "production"
+FIREBASE_PROJECT_ID = "mht-giftcards-production"
+PUBLIC_SITE_ORIGIN = "https://mitchharschtattoo.com"
+PUBLIC_SITE_URL = "https://mitchharschtattoo.com/"
+TURNSTILE_EXPECTED_HOSTNAME = "mitchharschtattoo.com"
+EMAIL_FROM = "Mitch Harsch Tattoo <giftcards@mitchharschtattoo.com>"
+ORDERS_ENABLED = "false"
+MAX_ORDERS_PER_DAY = "20"
+MAX_ORDER_AMOUNT_CENTS = "0"
+EMAIL_DAILY_LIMIT = "80"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mht-giftcards-production"
+database_id = "26ccd01c-190b-4b58-9c06-c85a7809747f"
+migrations_dir = "migrations/production"
