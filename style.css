@@ -811,3 +811,48 @@ dialog p {
 		scroll-behavior: auto;
 	}
 }
+/* Password visibility toggle */
+
+.admin-password-field {
+	position: relative;
+	width: 100%;
+}
+
+.admin-password-field input {
+	display: block;
+	width: 100%;
+	padding-right: 3.25rem;
+}
+
+.admin-password-toggle {
+	position: absolute;
+	top: 50%;
+	right: 0.5rem;
+	transform: translateY(-50%);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	width: 40px;
+	height: 40px;
+	padding: 0;
+
+	border: none;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.admin-password-toggle:hover {
+	color: var(--accent);
+}
+
+.admin-password-toggle:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.admin-password-toggle svg {
+	pointer-events: none;
+}

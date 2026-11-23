@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,10 +13,12 @@
   <script src="../../../production-gift-cards-config.js"></script>
   <script type="module" src="../../../production-admin-gift-cards.js"></script>
 </head>
+
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header id="top">
-    <a class="brand" href="../../../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a>
+    <a class="brand" href="../../../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH
+      <small>TATTOO</small></a>
     <span class="production-admin-label">Production admin</span>
   </header>
   <main id="main" class="wrap admin-page">
@@ -23,7 +26,8 @@
       <p class="kicker">Private area</p>
       <h1>Gift Card <span class="tattoo">Management</span></h1>
       <p class="muted production-admin-warning">Verify each e-Transfer in the bank account before selecting
-        <strong>Confirm Payment Received</strong>. That action issues the valid certificate and cannot be undone.</p>
+        <strong>Confirm Payment Received</strong>. That action issues the valid certificate and cannot be undone.
+      </p>
     </section>
     <p id="admin-error" class="gift-error production-admin-notice" role="alert" aria-live="assertive"></p>
     <p id="admin-local-preview-note" class="production-admin-local-note" role="note" hidden></p>
@@ -33,7 +37,29 @@
       <label for="admin-email">Email</label>
       <input id="admin-email" type="email" autocomplete="username" required>
       <label for="admin-password">Password</label>
-      <input id="admin-password" type="password" autocomplete="current-password" required>
+
+      <div class="admin-password-field">
+        <input id="admin-password" type="password" autocomplete="current-password" required>
+
+        <button id="admin-password-toggle" class="admin-password-toggle" type="button" aria-label="Show password"
+          aria-pressed="false" aria-controls="admin-password">
+          <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+
+          <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true" hidden>
+            <path d="M3 3l18 18" />
+            <path d="M10.6 5.1A11 11 0 0 1 12 5c6.5 0 10 7 10 7a15 15 0 0 1-3.1 3.8" />
+            <path d="M6.3 6.4C3.5 8.2 2 12 2 12s3.5 7 10 7a10 10 0 0 0 4.1-.9" />
+            <path d="M10 10a3 3 0 0 0 4 4" />
+          </svg>
+        </button>
+      </div>
       <button class="solid" type="submit">Sign in</button>
     </form>
 
@@ -73,8 +99,33 @@
   </main>
   <footer>
     <div class="wrap footer">
-      <a class="brand" href="../../../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH <small>TATTOO</small></a>
+      <a class="brand" href="../../../"><span class="mark" aria-hidden="true">✦</span> MITCH HARSCH
+        <small>TATTOO</small></a>
     </div>
   </footer>
+  <script>
+    const passwordInput = document.getElementById("admin-password");
+    const passwordToggle = document.getElementById("admin-password-toggle");
+
+    const eyeOpen = passwordToggle.querySelector(".eye-open");
+    const eyeClosed = passwordToggle.querySelector(".eye-closed");
+
+    passwordToggle.addEventListener("click", () => {
+      const showing = passwordInput.type === "password";
+
+      passwordInput.type = showing ? "text" : "password";
+
+      eyeOpen.hidden = showing;
+      eyeClosed.hidden = !showing;
+
+      passwordToggle.setAttribute(
+        "aria-label",
+        showing ? "Hide password" : "Show password"
+      );
+
+      passwordToggle.setAttribute("aria-pressed", String(showing));
+    });
+  </script>
 </body>
+
 </html>
