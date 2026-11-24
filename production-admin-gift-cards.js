@@ -17,6 +17,7 @@ const localPreviewHost = window.location.hostname.toLowerCase();
 let auth;
 let api;
 let orderLoad = 0;
+let orderPage = 1;
 let salesLoad = 0;
 let lastCertificateCode = "";
 
@@ -117,8 +118,10 @@ if (api) {
     }
   });
   document.querySelector("#refresh-orders").addEventListener("click", () => loadOrdersWithError(true));
-  document.querySelector("#order-filter").addEventListener("change", () => loadOrdersWithError());
-  document.querySelector("#archive-filter").addEventListener("change", () => loadOrdersWithError());
+  document.querySelector("#order-filter").addEventListener("change", () => loadOrdersWithError(false, 1));
+  document.querySelector("#archive-filter").addEventListener("change", () => loadOrdersWithError(false, 1));
+  document.querySelector("#orders-previous").addEventListener("click", () => loadOrdersWithError(false, orderPage - 1));
+  document.querySelector("#orders-next").addEventListener("click", () => loadOrdersWithError(false, orderPage + 1));
   document.querySelector("#certificate-search").addEventListener("submit", async (event) => {
     event.preventDefault();
     lastCertificateCode = document.querySelector("#certificate-code").value.trim();
@@ -126,23 +129,31 @@ if (api) {
   });
 }
 
-async function loadOrdersWithError(refreshSales = false) {
+async function loadOrdersWithError(refreshSales = false, page = orderPage) {
   clearMessages();
   try {
-    await Promise.all([loadOrders(), refreshSales && loadSales()]);
+    await Promise.all([loadOrders(page), refreshSales && loadSales()]);
   } catch (requestError) {
     showError(requestError);
   }
 }
 
-async function loadOrders() {
+async function loadOrders(page = orderPage) {
   const request = ++orderLoad;
   const user = auth.currentUser;
   const result = await api.call("listOrders", {
     archive: document.querySelector("#archive-filter").value,
-    status: document.querySelector("#order-filter").value
+    status: document.querySelector("#order-filter").value,
+    page
   });
-  if (request === orderLoad && user === auth.currentUser) renderOrders(result.orders);
+  if (request !== orderLoad || user !== auth.currentUser) return;
+  const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
+  if (page > pages) return loadOrders(pages);
+  orderPage = page;
+  renderOrders(result.orders);
+  document.querySelector("#orders-page").textContent = `Page ${page} of ${pages} · ${result.total} orders`;
+  document.querySelector("#orders-previous").disabled = page <= 1;
+  document.querySelector("#orders-next").disabled = page >= pages;
 }
 
 async function loadSales() {
@@ -221,7 +232,7 @@ function renderOrders(orders) {
     actions.className = "admin-actions";
     if (order.archived_at) {
       appendDetail(article, `Archived ${formatDate(order.archived_at)}`);
-      actions.append(archiveButton(order, false));
+      actions.append(archiveButton(order, false), deleteButton(order));
       article.append(actions);
       list.append(article);
       continue;
@@ -277,7 +288,8 @@ function renderOrders(orders) {
         }
       }));
     }
-    if (actions.childElementCount) article.append(actions);
+    actions.append(deleteButton(order));
+    article.append(actions);
     list.append(article);
   }
 }
@@ -290,6 +302,22 @@ function paymentResultMessage(result) {
     return `${base} One or more emails could not be sent; use the retry actions after checking configuration.`;
   }
   return `${base} Confirmation and certificate emails sent.`;
+}
+
+function deleteButton(order) {
+  const button = actionButton("Delete test order", async () => {
+    const typed = window.prompt(
+      `Permanently delete test order ${order.order_ref}? This removes its order, any gift certificate, ` +
+      "and any redemption history from the system and sales totals. Any certificate code will stop " +
+      "working. Deleting the order does not refund an e-Transfer. Type the order reference to confirm."
+    );
+    if (typed === null) return false;
+    if (typed.trim() !== order.order_ref) throw new Error("The order reference did not match.");
+    await api.call("deleteOrder", { orderId: order.id, orderRef: typed.trim(), updatedAt: order.updated_at });
+    showMessage("Test order permanently deleted.");
+  });
+  button.classList.add("order-delete");
+  return button;
 }
 
 function archiveButton(order, archive) {

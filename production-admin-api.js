@@ -4,14 +4,19 @@ const PRODUCTION_AUTH_DOMAIN = `${PRODUCTION_PROJECT_ID}.firebaseapp.com`;
 const ACTION_ROUTES = Object.freeze({
   listOrders: {
     method: "GET",
-    path: ({ archive, status }) => {
+    path: ({ archive, status, page }) => {
       const query = new URLSearchParams();
       if (archive) query.set("archive", archive);
       if (status) query.set("status", status);
+      if (page !== undefined) query.set("page", page);
       return query.size ? `/api/admin/orders?${query}` : "/api/admin/orders";
     }
   },
   sales: { method: "GET", path: "/api/admin/sales" },
+  deleteOrder: {
+    method: "POST",
+    path: ({ orderId }) => `/api/admin/orders/${encodeURIComponent(orderId)}/delete`
+  },
   archiveOrder: {
     method: "POST",
     path: ({ orderId }) => `/api/admin/orders/${encodeURIComponent(orderId)}/archive`

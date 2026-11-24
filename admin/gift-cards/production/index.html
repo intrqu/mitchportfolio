@@ -68,18 +68,6 @@
         <p id="admin-identity"></p>
         <button id="admin-signout" class="outline" type="button">Sign out</button>
       </div>
-      <section class="admin-panel" aria-labelledby="sales-heading">
-        <h2 id="sales-heading">Gift card sales</h2>
-        <dl class="sales-totals" aria-live="polite">
-          <div><dt>Confirmed revenue · all time</dt><dd id="sales-confirmed">—</dd></div>
-          <div><dt>Confirmed revenue · this month</dt><dd id="sales-this-month">—</dd></div>
-          <div><dt>Outstanding certificate balance</dt><dd id="sales-outstanding">—</dd></div>
-          <div><dt>Total redeemed</dt><dd id="sales-redeemed">—</dd></div>
-        </dl>
-        <h3 id="monthly-sales-heading">Monthly confirmed revenue</h3>
-        <p class="form-note">Last 12 months in CAD, by payment confirmation date in Vancouver.</p>
-        <ol id="monthly-sales" class="sales-chart" aria-labelledby="monthly-sales-heading"></ol>
-      </section>
       <section class="admin-panel">
         <div class="admin-section-heading production-admin-section-heading">
           <h2>Orders</h2>
@@ -102,7 +90,23 @@
           <button id="refresh-orders" class="outline" type="button">Refresh</button>
         </div>
         <div id="order-list" class="order-list" aria-live="polite"></div>
-        <p class="form-note">Showing up to 100 of the most recent orders matching these filters.</p>
+        <nav class="admin-pagination" aria-label="Order pages">
+          <button id="orders-previous" class="outline" type="button" disabled>Previous</button>
+          <span id="orders-page" class="form-note" aria-live="polite"></span>
+          <button id="orders-next" class="outline" type="button" disabled>Next</button>
+        </nav>
+      </section>
+      <section class="admin-panel" aria-labelledby="sales-heading">
+        <h2 id="sales-heading">Gift card sales</h2>
+        <dl class="sales-totals" aria-live="polite">
+          <div><dt>Confirmed revenue · all time</dt><dd id="sales-confirmed">—</dd></div>
+          <div><dt>Confirmed revenue · this month</dt><dd id="sales-this-month">—</dd></div>
+          <div><dt>Outstanding certificate balance</dt><dd id="sales-outstanding">—</dd></div>
+          <div><dt>Total redeemed</dt><dd id="sales-redeemed">—</dd></div>
+        </dl>
+        <h3 id="monthly-sales-heading">Monthly confirmed revenue</h3>
+        <p class="form-note">Last 12 months in CAD, by payment confirmation date in Vancouver.</p>
+        <ol id="monthly-sales" class="sales-chart" aria-labelledby="monthly-sales-heading"></ol>
       </section>
       <section class="admin-panel">
         <h2>Find a certificate</h2>

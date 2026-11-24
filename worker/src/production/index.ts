@@ -581,14 +581,69 @@ async function listOrders(env: ProductionEnv, query: URLSearchParams): Promise<R
   }
   const statusFilter = orderStatusFilters.get(query.get("status") ?? "all");
   if (!statusFilter) fail(400, "Choose a valid order status.", "invalid-argument");
-
-  const result = await env.DB.prepare(`
-    SELECT * FROM gift_card_orders
+  const matchingOrders = `FROM gift_card_orders
     WHERE environment = 'production' AND test_only = 0
-      ${archiveFilter[archive]} AND (${statusFilter})
-    ORDER BY created_at DESC, id DESC LIMIT 100
-  `).all<ProductionOrder>();
-  return jsonResponse({ orders: result.results });
+      ${archiveFilter[archive]} AND (${statusFilter})`;
+  const sortedOrders = `SELECT * ${matchingOrders} ORDER BY created_at DESC, id DESC`;
+  const pageParam = query.get("page");
+  if (pageParam === null) {
+    const result = await env.DB.prepare(`${sortedOrders} LIMIT 100`).all<ProductionOrder>();
+    return jsonResponse({ orders: result.results });
+  }
+
+  const page = Number(pageParam);
+  const pageSize = 5;
+  const offset = (page - 1) * pageSize;
+  if (!/^\d+$/.test(pageParam) || page < 1 || !Number.isSafeInteger(offset)) {
+    fail(400, "Choose a valid page number.", "invalid-argument");
+  }
+  const [count, orders] = await env.DB.batch<{ total: number } | ProductionOrder>([
+    env.DB.prepare(`SELECT COUNT(*) AS total ${matchingOrders}`),
+    env.DB.prepare(`${sortedOrders} LIMIT ? OFFSET ?`).bind(pageSize, offset)
+  ]);
+  const total = (count.results[0] as { total: number }).total;
+  return jsonResponse({ orders: orders.results, page, pageSize, total });
+}
+
+async function deleteTestOrder(
+  orderId: string,
+  body: Record<string, unknown>,
+  env: ProductionEnv
+): Promise<Response> {
+  const order = await orderById(env, orderId);
+  if (!order) fail(404, "Gift card order was not found.", "not-found");
+  if (body.orderRef !== order.order_ref) {
+    fail(400, "Type the exact order reference to confirm deletion.", "invalid-argument");
+  }
+  if (body.updatedAt !== order.updated_at) {
+    fail(412, "The order changed. Refresh before confirming deletion.", "failed-precondition");
+  }
+
+  // All statements share a D1 transaction. The guard applies to the deletion
+  // of related records as well as to the deletion of the order itself.
+  const target = `SELECT id FROM gift_card_orders
+    WHERE id = ? AND order_ref = ? AND updated_at = ?
+      AND environment = 'production' AND test_only = 0
+      AND NOT EXISTS (
+        SELECT 1 FROM gift_card_email_deliveries
+        WHERE order_id = gift_card_orders.id AND delivery_status = 'sending'
+      )`;
+  const statements = [
+    `DELETE FROM gift_card_redemptions WHERE code_hash IN (
+      SELECT code_hash FROM gift_certificates WHERE order_id IN (${target})
+    )`,
+    `DELETE FROM gift_certificates WHERE order_id IN (${target})`,
+    `DELETE FROM gift_card_email_deliveries WHERE order_id IN (${target})`,
+    `DELETE FROM gift_card_orders WHERE id IN (${target})
+      RETURNING id`
+  ];
+  const results = await env.DB.batch(statements.map((statement) =>
+    env.DB.prepare(statement).bind(orderId, order.order_ref, order.updated_at)
+  ));
+  if (!results.at(-1)?.results.length) {
+    fail(412, "The order changed or has an email in progress. Refresh and try again.", "failed-precondition");
+  }
+  return jsonResponse({ deleted: true });
 }
 
 async function setOrderArchived(
@@ -880,6 +935,11 @@ export async function handleProductionRequest(
         return response(await getSales(env), 200, origin, env.PUBLIC_SITE_ORIGIN);
       }
       if (request.method === "POST") {
+        const deleteOrder = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/delete$/);
+        if (deleteOrder) {
+          const result = await deleteTestOrder(deleteOrder[1], await readJson(request), env);
+          return response(await result.json(), result.status, origin, env.PUBLIC_SITE_ORIGIN);
+        }
         const archive = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/(archive|restore)$/);
         if (archive) {
           const result = await setOrderArchived(archive[1], archive[2] === "archive", identity, env);

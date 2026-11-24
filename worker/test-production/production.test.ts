@@ -155,6 +155,65 @@ afterEach(() => {
 });
 
 describe("production gift card Worker", () => {
+  it("pages filtered orders five at a time with a count across all matching rows", async () => {
+    await createOrder();
+    const [{ id }] = (await listOrders()).orders;
+    await workerEnv.DB.prepare(`
+      WITH RECURSIVE items(n) AS (VALUES (1) UNION ALL SELECT n + 1 FROM items WHERE n < 12)
+      INSERT INTO gift_card_orders (
+        id, order_ref, idempotency_hash, access_token_hash, purchaser_name, purchaser_email,
+        recipient_name, recipient_email, recipient_type, amount_cents, payment_method,
+        payment_status, certificate_status, environment, created_at, updated_at, archived_at
+      )
+      SELECT 'page-' || n, 'page-ref-' || n, 'page-idempotency-' || n, access_token_hash,
+        purchaser_name, purchaser_email, recipient_name, recipient_email, recipient_type,
+        amount_cents, payment_method, 'pending_payment', 'not_issued', 'production', created_at,
+        updated_at, CASE WHEN n = 12 THEN updated_at END
+      FROM items CROSS JOIN gift_card_orders WHERE gift_card_orders.id = ?
+    `).bind(id).run();
+
+    const load = async (page: number) => {
+      const response = await callApi(`/api/admin/orders?archive=active&status=pending&page=${page}`, {
+        token: "valid-admin"
+      });
+      expect(response.status).toBe(200);
+      return response.json() as Promise<{ page: number; pageSize: number; total: number; orders: { id: string }[] }>;
+    };
+    const pages = await Promise.all([load(1), load(2), load(3)]);
+    expect(pages.map((page) => page.orders.length)).toEqual([5, 5, 2]);
+    expect(pages.every((page) => page.pageSize === 5 && page.total === 12)).toBe(true);
+    const ids = pages.flatMap((page) => page.orders.map((order) => order.id));
+    expect(new Set(ids).size).toBe(12);
+    expect(ids).not.toContain("page-12");
+    expect((await callApi("/api/admin/orders?page=0", { token: "valid-admin" })).status).toBe(400);
+  });
+
+  it("permanently deletes a paid test order, its certificate, and its redemption history", async () => {
+    const { orderId, code } = await confirmedCertificateCode();
+    const redemption = await callApi("/api/admin/certificates/redeem", {
+      token: "valid-admin",
+      body: { code, amountCents: 3_000, note: "test redemption", requestId: crypto.randomUUID() }
+    });
+    expect(redemption.status).toBe(200);
+    const order = await workerEnv.DB.prepare(`
+      SELECT order_ref, updated_at FROM gift_card_orders WHERE id = ?
+    `).bind(orderId).first<{ order_ref: string; updated_at: string }>();
+    if (!order) throw new Error("Expected a test order.");
+    const remove = (body: Record<string, unknown>, token = "valid-admin") =>
+      callApi(`/api/admin/orders/${orderId}/delete`, { token, body });
+    const body = { orderRef: order.order_ref, updatedAt: order.updated_at };
+    expect((await remove(body, "valid-customer")).status).toBe(403);
+    expect((await remove({ ...body, orderRef: "different-order" })).status).toBe(400);
+    expect((await remove({ ...body, updatedAt: "stale" })).status).toBe(412);
+    expect((await remove(body)).status).toBe(200);
+    expect((await listOrders()).orders).toEqual([]);
+    for (const table of ["gift_certificates", "gift_card_redemptions", "gift_card_email_deliveries"]) {
+      expect(await workerEnv.DB.prepare(`SELECT COUNT(*) AS count FROM ${table}`).first("count")).toBe(0);
+    }
+    expect(await getSales(workerEnv)).toMatchObject({
+      confirmedRevenueCents: 0, outstandingBalanceCents: 0, totalRedeemedCents: 0
+    });
+  });
   it("archives pending orders with admin authorization, filters them and restores them", async () => {
     const { data } = await createOrder();
     const [{ id }] = (await listOrders()).orders;
