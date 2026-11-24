@@ -8,7 +8,8 @@ export interface ProductionAdminConfig {
 
 export interface ProductionAdminApi {
   call(
-    action: "listOrders" | "confirmPayment" | "retryOrderEmails" |
+    action: "listOrders" | "sales" | "archiveOrder" | "restoreOrder" |
+      "confirmPayment" | "retryOrderEmails" |
       "resendCertificate" | "lookupCertificate" | "redeemCertificate",
     data?: Record<string, unknown>
   ): Promise<Record<string, unknown>>;

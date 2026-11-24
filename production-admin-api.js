@@ -2,7 +2,24 @@ const PRODUCTION_PROJECT_ID = "mht-giftcards-production";
 const PRODUCTION_AUTH_DOMAIN = `${PRODUCTION_PROJECT_ID}.firebaseapp.com`;
 
 const ACTION_ROUTES = Object.freeze({
-  listOrders: { method: "GET", path: "/api/admin/orders" },
+  listOrders: {
+    method: "GET",
+    path: ({ archive, status }) => {
+      const query = new URLSearchParams();
+      if (archive) query.set("archive", archive);
+      if (status) query.set("status", status);
+      return query.size ? `/api/admin/orders?${query}` : "/api/admin/orders";
+    }
+  },
+  sales: { method: "GET", path: "/api/admin/sales" },
+  archiveOrder: {
+    method: "POST",
+    path: ({ orderId }) => `/api/admin/orders/${encodeURIComponent(orderId)}/archive`
+  },
+  restoreOrder: {
+    method: "POST",
+    path: ({ orderId }) => `/api/admin/orders/${encodeURIComponent(orderId)}/restore`
+  },
   confirmPayment: {
     method: "POST",
     path: (data) => `/api/admin/orders/${encodeURIComponent(data.orderId)}/confirm-payment`

@@ -126,6 +126,12 @@ Turnstile, Resend, Interac, and encryption values supplied by
 only to that local test database. Do not run `wrangler deploy` or any
 `wrangler d1 ... --remote` command during local validation.
 
+The gift-card sales dashboard and archive controls require production migration
+`0002_order_archive.sql`. After release approval, apply it to production D1,
+deploy the production Worker, then publish the admin frontend. Publishing to
+the live Pages branch can update the site under the legacy Pages configuration.
+The migration leaves existing orders active and adds indexes for the new views.
+
 ## Production sequence — each remaining live step requires separate approval
 
 1. **Complete:** The initial Firebase admin claim is assigned and verified,

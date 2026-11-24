@@ -165,6 +165,60 @@
   border-left: 3px solid var(--edge);
   padding-left: 1rem;
 }
+.sales-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+.sales-totals > div {
+  padding: 1rem;
+  border: 1px solid var(--edge);
+  background: var(--bg);
+}
+.sales-totals dt {
+  color: var(--muted);
+}
+.sales-totals dd {
+  margin: 0.3rem 0 0;
+  font: 600 1.65rem var(--label);
+  font-variant-numeric: tabular-nums;
+}
+#monthly-sales-heading {
+  margin: 0;
+  font: 600 1.2rem var(--label);
+}
+.sales-chart {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+.sales-chart li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) minmax(5rem, max-content);
+  align-items: center;
+  gap: 0.6rem;
+}
+.sales-chart li > :last-child {
+  text-align: right;
+}
+.sales-chart-track {
+  display: block;
+  height: 0.55rem;
+  background: var(--edge);
+}
+.sales-chart-track > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.production-admin-section-heading select {
+  width: auto;
+  max-width: 100%;
+}
 @media (max-width: 600px) {
   .admin-heading h1 {
     font-size: clamp(2.8rem, 13vw, 4.5rem);

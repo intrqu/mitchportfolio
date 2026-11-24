@@ -27,6 +27,8 @@ const MAX_BODY_BYTES = 16_384;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+import { getSales } from "./sales.js";
+
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -338,7 +340,8 @@ async function reportPayment(
   const now = new Date().toISOString();
   const update = await env.DB.prepare(`
     UPDATE gift_card_orders
-    SET payment_status = 'payment_reported', payment_reported_at = ?, updated_at = ?
+    SET payment_status = 'payment_reported', payment_reported_at = ?, updated_at = ?,
+        archived_at = NULL, archived_by = NULL
     WHERE id = ? AND payment_status = 'pending_payment'
       AND environment = 'production' AND test_only = 0
   `).bind(now, now, order.id).run();
@@ -489,6 +492,7 @@ async function confirmPayment(
       SET payment_status = 'paid', payment_verified_at = ?, payment_verified_by = ?,
           payment_confirmation_note = ?, updated_at = ?
       WHERE id = ? AND payment_status IN ('pending_payment', 'payment_reported')
+        AND archived_at IS NULL
         AND environment = 'production' AND test_only = 0
     `).bind(now, identity.uid, note, now, order.id).run();
     alreadyConfirmed = (result.meta?.changes ?? 0) === 0;
@@ -555,13 +559,65 @@ async function downloadCertificate(
   return pdfResponse(pdf, `${order.order_ref}.pdf`, origin, PRODUCTION_SITE_ORIGIN);
 }
 
-async function listOrders(env: ProductionEnv): Promise<Response> {
+const orderStatusFilters = new Map([
+  ["all", "1"],
+  ["pending", "payment_status = 'pending_payment'"],
+  ["reported", "payment_status = 'payment_reported'"],
+  ["paid_unissued", "payment_status = 'paid' AND certificate_status = 'not_issued'"],
+  ["issued", "certificate_status = 'issued'"],
+  ["partial", "certificate_status = 'partially_redeemed'"],
+  ["redeemed", "certificate_status = 'redeemed'"]
+]);
+
+async function listOrders(env: ProductionEnv, query: URLSearchParams): Promise<Response> {
+  const archive = query.get("archive") ?? "active";
+  const archiveFilter = {
+    active: "AND (archived_at IS NOT NULL) = 0",
+    archived: "AND (archived_at IS NOT NULL) = 1",
+    all: ""
+  };
+  if (archive !== "active" && archive !== "archived" && archive !== "all") {
+    fail(400, "Choose a valid archive filter.", "invalid-argument");
+  }
+  const statusFilter = orderStatusFilters.get(query.get("status") ?? "all");
+  if (!statusFilter) fail(400, "Choose a valid order status.", "invalid-argument");
+
   const result = await env.DB.prepare(`
     SELECT * FROM gift_card_orders
     WHERE environment = 'production' AND test_only = 0
+      ${archiveFilter[archive]} AND (${statusFilter})
     ORDER BY created_at DESC, id DESC LIMIT 100
   `).all<ProductionOrder>();
   return jsonResponse({ orders: result.results });
+}
+
+async function setOrderArchived(
+  orderId: string,
+  archived: boolean,
+  identity: { uid: string },
+  env: ProductionEnv
+): Promise<Response> {
+  const now = new Date().toISOString();
+  const order = await env.DB.prepare(`
+    UPDATE gift_card_orders
+    SET archived_at = ?, archived_by = ?, updated_at = ?
+    WHERE id = ? AND environment = 'production' AND test_only = 0
+      AND ${archived ? `
+        archived_at IS NULL AND payment_status = 'pending_payment'
+        AND certificate_status = 'not_issued'
+        AND NOT EXISTS (SELECT 1 FROM gift_certificates WHERE order_id = gift_card_orders.id)
+      ` : "archived_at IS NOT NULL"}
+    RETURNING archived_at
+  `).bind(archived ? now : null, archived ? identity.uid : null, now, orderId)
+    .first<{ archived_at: string | null }>();
+  if (order) return jsonResponse({ archivedAt: order.archived_at });
+
+  const existing = await orderById(env, orderId);
+  if (!existing) fail(404, "Gift card order was not found.", "not-found");
+  if (archived && !existing.archived_at) {
+    fail(412, "Only orders awaiting payment with no certificate can be archived.", "failed-precondition");
+  }
+  return jsonResponse({ archivedAt: existing.archived_at });
 }
 
 async function retryOrderEmails(
@@ -817,10 +873,18 @@ export async function handleProductionRequest(
     if (url.pathname.startsWith("/api/admin/")) {
       const identity = await requireAdmin(request, env, dependencies);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") {
-        const result = await listOrders(env);
+        const result = await listOrders(env, url.searchParams);
         return response(await result.json(), result.status, origin, env.PUBLIC_SITE_ORIGIN);
       }
+      if (url.pathname === "/api/admin/sales" && request.method === "GET") {
+        return response(await getSales(env), 200, origin, env.PUBLIC_SITE_ORIGIN);
+      }
       if (request.method === "POST") {
+        const archive = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/(archive|restore)$/);
+        if (archive) {
+          const result = await setOrderArchived(archive[1], archive[2] === "archive", identity, env);
+          return response(await result.json(), result.status, origin, env.PUBLIC_SITE_ORIGIN);
+        }
         const confirm = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/confirm-payment$/);
         if (confirm) {
           const result = await confirmPayment(

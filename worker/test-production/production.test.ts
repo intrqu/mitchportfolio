@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { decryptSecret, randomBase64Url } from "../src/crypto.js";
 import { handleProductionRequest, normalizeProductionCode } from "../src/production/index.js";
+import { getSales } from "../src/production/sales.js";
 import type { ProductionEnv } from "../src/production/types.js";
 import { normalizeRedemptionCode } from "../src/validation.js";
 
@@ -154,6 +155,130 @@ afterEach(() => {
 });
 
 describe("production gift card Worker", () => {
+  it("archives pending orders with admin authorization, filters them and restores them", async () => {
+    const { data } = await createOrder();
+    const [{ id }] = (await listOrders()).orders;
+    const change = (action: string, token = "valid-admin") =>
+      callApi(`/api/admin/orders/${id}/${action}`, { method: "POST", token });
+    const filter = async (query: string) => {
+      const response = await callApi(`/api/admin/orders?${query}`, { token: "valid-admin" });
+      expect(response.status).toBe(200);
+      return (await response.json() as { orders: unknown[] }).orders;
+    };
+
+    expect((await change("archive", "valid-customer")).status).toBe(403);
+    const archived = await change("archive");
+    expect(archived.status).toBe(200);
+    const archivePayload = await archived.json();
+    expect(archivePayload).toMatchObject({ archivedAt: expect.any(String) });
+    expect(await (await change("archive")).json()).toEqual(archivePayload);
+    expect((await listOrders()).orders).toEqual([]);
+    expect(await filter("archive=archived&status=pending")).toMatchObject([
+      { id, archived_by: "production-admin-1" }
+    ]);
+    expect(await filter("archive=all")).toHaveLength(1);
+    expect(await filter("archive=archived&status=issued")).toEqual([]);
+    expect((await confirmOrder(id)).status).toBe(412);
+    expect(await (await change("restore")).json()).toEqual({ archivedAt: null });
+    expect(await (await change("restore")).json()).toEqual({ archivedAt: null });
+    expect((await listOrders()).orders).toMatchObject([{ id, archived_by: null }]);
+
+    expect((await change("archive")).status).toBe(200);
+    expect((await callApi(`/api/orders/${data.orderRef}/report-payment`, {
+      method: "POST", accessToken: data.accessToken, body: {}
+    })).status).toBe(200);
+    expect(await filter("status=reported")).toMatchObject([{ id, archived_at: null }]);
+    expect((await change("archive")).status).toBe(412);
+    expect((await confirmOrder(id)).status).toBe(200);
+    expect((await change("archive")).status).toBe(412);
+  });
+
+  it("aggregates confirmed sales beyond the list cap and counts only applied redemptions", async () => {
+    const { orderId, code } = await confirmedCertificateCode();
+    expect((await callApi("/api/admin/sales", { token: "valid-customer" })).status).toBe(403);
+    const redeem = await callApi("/api/admin/certificates/redeem", {
+      token: "valid-admin",
+      body: { code, amountCents: 3_000, note: "partial use", requestId: crypto.randomUUID() }
+    });
+    expect(redeem.status).toBe(200);
+    await workerEnv.DB.batch([
+      workerEnv.DB.prepare(`
+        INSERT INTO gift_card_redemptions
+          (request_id, code_hash, amount_cents, balance_after_cents, redeemed_by,
+           deduction_applied, environment, test_only, created_at)
+        SELECT 'unapplied', code_hash, 1000, 6000, redeemed_by, 0, environment, test_only, created_at
+        FROM gift_card_redemptions
+      `),
+      workerEnv.DB.prepare(`
+        UPDATE gift_card_orders
+        SET created_at = '2025-04-30T00:00:00.000Z', payment_verified_at = '2025-05-01T06:59:59.999Z'
+        WHERE id = ?
+      `).bind(orderId),
+      workerEnv.DB.prepare(`
+        WITH RECURSIVE numbers(n) AS (VALUES (1) UNION ALL SELECT n + 1 FROM numbers WHERE n < 102)
+        INSERT INTO gift_card_orders (
+          id, order_ref, idempotency_hash, access_token_hash, purchaser_name, purchaser_email,
+          recipient_name, recipient_email, recipient_type, amount_cents, payment_method,
+          payment_status, certificate_status, environment, created_at, updated_at, archived_at
+        )
+        SELECT 'fixture-' || n, 'ref-' || n, 'idem-' || n, access_token_hash, purchaser_name,
+          purchaser_email, recipient_name, recipient_email, recipient_type, 9900, payment_method,
+          CASE WHEN n = 1 THEN 'payment_reported' ELSE 'pending_payment' END,
+          'not_issued', 'production', '2025-05-02T00:00:00.000Z',
+          '2025-05-02T00:00:00.000Z', CASE WHEN n = 2 THEN '2025-05-02T00:00:00.000Z' END
+        FROM numbers CROSS JOIN gift_card_orders WHERE gift_card_orders.id = ?
+      `).bind(orderId),
+      workerEnv.DB.prepare(`
+        UPDATE gift_card_orders SET payment_status = 'paid',
+          payment_verified_at = '2025-05-01T07:00:00.000Z', payment_verified_by = 'admin'
+        WHERE id = 'fixture-3'
+      `),
+      workerEnv.DB.prepare(`
+        UPDATE gift_card_orders SET payment_status = 'paid', amount_cents = 5000,
+          created_at = '2023-05-01T00:00:00.000Z',
+          payment_verified_at = '2023-05-02T00:00:00.000Z', payment_verified_by = 'admin'
+        WHERE id = 'fixture-4'
+      `)
+    ]);
+
+    const { orders } = await listOrders();
+    expect(orders).toHaveLength(100);
+    expect(orders.some(({ id }) => id === orderId)).toBe(false);
+    const issued = await callApi("/api/admin/orders?status=partial", { token: "valid-admin" });
+    expect(await issued.json()).toMatchObject({ orders: [{ id: orderId }] });
+    const report = await callApi("/api/admin/sales", { token: "valid-admin" });
+    expect(report.status).toBe(200);
+    expect(await report.json()).toMatchObject({
+      confirmedRevenueCents: 24_900, outstandingBalanceCents: 7_000, totalRedeemedCents: 3_000
+    });
+    const sales = await getSales(workerEnv, new Date("2025-05-01T07:00:00.000Z"));
+    expect(sales.confirmedRevenueCents).toBe(24_900);
+    expect(sales.thisMonthRevenueCents).toBe(9_900);
+    expect(sales.monthlyRevenue).toHaveLength(12);
+    expect(sales.monthlyRevenue.slice(-3)).toEqual([
+      { month: "2025-03", revenueCents: 0 },
+      { month: "2025-04", revenueCents: 10_000 },
+      { month: "2025-05", revenueCents: 9_900 }
+    ]);
+    expect((await getSales(workerEnv, new Date("2025-05-01T06:59:59.999Z")))
+      .thisMonthRevenueCents).toBe(10_000);
+  });
+
+  it("keeps archiving and payment confirmation mutually exclusive for the same pending order", async () => {
+    await createOrder();
+    const [{ id }] = (await listOrders()).orders;
+    const [archive, payment] = await Promise.all([
+      callApi(`/api/admin/orders/${id}/archive`, { method: "POST", token: "valid-admin" }),
+      confirmOrder(id)
+    ]);
+    expect([archive.status, payment.status].sort()).toEqual([200, 412]);
+    const order = await workerEnv.DB.prepare(`
+      SELECT payment_status, certificate_status, archived_at FROM gift_card_orders WHERE id = ?
+    `).bind(id).first();
+    expect(order).toEqual(archive.ok
+      ? { payment_status: "pending_payment", certificate_status: "not_issued", archived_at: expect.any(String) }
+      : { payment_status: "paid", certificate_status: "issued", archived_at: null });
+  });
   it("uses isolated dummy credentials in the local production test environment", () => {
     expect(workerEnv.PRODUCTION_INTERAC_EMAIL).toBe("payments@example.com");
     expect(workerEnv.RESEND_API_KEY).toBe("test-resend-key");

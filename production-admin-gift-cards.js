@@ -16,7 +16,8 @@ const localPreviewNote = document.querySelector("#admin-local-preview-note");
 const localPreviewHost = window.location.hostname.toLowerCase();
 let auth;
 let api;
-let orders = [];
+let orderLoad = 0;
+let salesLoad = 0;
 let lastCertificateCode = "";
 
 if (localPreviewNote && ["localhost", "127.0.0.1"].includes(localPreviewHost)) {
@@ -81,6 +82,12 @@ if (api) {
       dashboard.hidden = true;
       login.hidden = false;
       showError(requestError);
+      return;
+    }
+    try {
+      await loadSales();
+    } catch (requestError) {
+      if (user === auth.currentUser) showError(requestError);
     }
   });
 
@@ -109,8 +116,9 @@ if (api) {
       showError(requestError);
     }
   });
-  document.querySelector("#refresh-orders").addEventListener("click", loadOrdersWithError);
-  document.querySelector("#order-filter").addEventListener("change", renderOrders);
+  document.querySelector("#refresh-orders").addEventListener("click", () => loadOrdersWithError(true));
+  document.querySelector("#order-filter").addEventListener("change", () => loadOrdersWithError());
+  document.querySelector("#archive-filter").addEventListener("change", () => loadOrdersWithError());
   document.querySelector("#certificate-search").addEventListener("submit", async (event) => {
     event.preventDefault();
     lastCertificateCode = document.querySelector("#certificate-code").value.trim();
@@ -118,42 +126,67 @@ if (api) {
   });
 }
 
-async function loadOrdersWithError() {
+async function loadOrdersWithError(refreshSales = false) {
   clearMessages();
   try {
-    await loadOrders();
+    await Promise.all([loadOrders(), refreshSales && loadSales()]);
   } catch (requestError) {
     showError(requestError);
   }
 }
 
 async function loadOrders() {
-  const result = await api.call("listOrders");
-  orders = Array.isArray(result.orders) ? result.orders : [];
-  renderOrders();
+  const request = ++orderLoad;
+  const user = auth.currentUser;
+  const result = await api.call("listOrders", {
+    archive: document.querySelector("#archive-filter").value,
+    status: document.querySelector("#order-filter").value
+  });
+  if (request === orderLoad && user === auth.currentUser) renderOrders(result.orders);
 }
 
-function renderOrders() {
+async function loadSales() {
+  const request = ++salesLoad;
+  const user = auth.currentUser;
+  const sales = await api.call("sales");
+  if (request !== salesLoad || user !== auth.currentUser) return;
+
+  document.querySelector("#sales-confirmed").textContent = money(sales.confirmedRevenueCents);
+  document.querySelector("#sales-this-month").textContent = money(sales.thisMonthRevenueCents);
+  document.querySelector("#sales-outstanding").textContent = money(sales.outstandingBalanceCents);
+  document.querySelector("#sales-redeemed").textContent = money(sales.totalRedeemedCents);
+
+  const max = Math.max(1, ...sales.monthlyRevenue.map(({ revenueCents }) => revenueCents));
+  const monthLabel = new Intl.DateTimeFormat("en-CA", {
+    month: "short", year: "numeric", timeZone: "UTC"
+  });
+  const rows = sales.monthlyRevenue.map(({ month, revenueCents }) => {
+    const row = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = monthLabel.format(new Date(`${month}-01T00:00:00Z`));
+    const track = document.createElement("span");
+    track.className = "sales-chart-track";
+    track.setAttribute("aria-hidden", "true");
+    const bar = document.createElement("span");
+    bar.style.width = `${100 * revenueCents / max}%`;
+    track.append(bar);
+    const amount = document.createElement("span");
+    amount.textContent = money(revenueCents);
+    row.append(label, track, amount);
+    return row;
+  });
+  document.querySelector("#monthly-sales").replaceChildren(...rows);
+}
+
+function renderOrders(orders) {
   const list = document.querySelector("#order-list");
   list.replaceChildren();
-  const filter = document.querySelector("#order-filter").value;
-  const visibleOrders = orders.filter((order) => {
-    if (filter === "pending") return order.payment_status === "pending_payment";
-    if (filter === "reported") return order.payment_status === "payment_reported";
-    if (filter === "paid_unissued") {
-      return order.payment_status === "paid" && order.certificate_status === "not_issued";
-    }
-    if (filter === "issued") return order.certificate_status === "issued";
-    if (filter === "partial") return order.certificate_status === "partially_redeemed";
-    if (filter === "redeemed") return order.certificate_status === "redeemed";
-    return true;
-  });
-  if (!visibleOrders.length) {
+  if (!orders.length) {
     list.textContent = "No orders in this view.";
     return;
   }
 
-  for (const order of visibleOrders) {
+  for (const order of orders) {
     const article = document.createElement("article");
     article.className = "order-card";
     const heading = document.createElement("h3");
@@ -186,6 +219,16 @@ function renderOrders() {
 
     const actions = document.createElement("div");
     actions.className = "admin-actions";
+    if (order.archived_at) {
+      appendDetail(article, `Archived ${formatDate(order.archived_at)}`);
+      actions.append(archiveButton(order, false));
+      article.append(actions);
+      list.append(article);
+      continue;
+    }
+    if (order.payment_status === "pending_payment" && order.certificate_status === "not_issued") {
+      actions.append(archiveButton(order, true));
+    }
     if (order.payment_status !== "paid") {
       actions.append(actionButton("Confirm Payment Received", async () => {
         const confirmation = window.confirm(
@@ -249,6 +292,20 @@ function paymentResultMessage(result) {
   return `${base} Confirmation and certificate emails sent.`;
 }
 
+function archiveButton(order, archive) {
+  const label = archive ? "Archive order" : "Restore order";
+  const effect = archive
+    ? "It will move to the archived orders view and its record will be kept."
+    : "It will return to the active orders view.";
+  return actionButton(label, async () => {
+    if (!window.confirm(`${archive ? "Archive" : "Restore"} order ${order.order_ref}? ${effect}`)) {
+      return false;
+    }
+    await api.call(archive ? "archiveOrder" : "restoreOrder", { orderId: order.id });
+    showMessage(archive ? "Order archived." : "Order restored.");
+  });
+}
+
 function actionButton(label, action) {
   const button = document.createElement("button");
   button.type = "button";
@@ -258,10 +315,10 @@ function actionButton(label, action) {
     button.disabled = true;
     clearMessages();
     try {
-      await action();
-      await loadOrders();
+      if (await action() !== false) await Promise.all([loadOrders(), loadSales()]);
     } catch (requestError) {
       showError(requestError);
+    } finally {
       button.disabled = false;
     }
   });
@@ -394,7 +451,7 @@ function createRedemptionForm(certificate) {
         ? "This redemption was already recorded; no additional balance was deducted."
         : "Redemption recorded.";
       await lookupCertificate(lastCertificateCode);
-      await loadOrders();
+      await Promise.all([loadOrders(), loadSales()]);
       showMessage(message);
     } catch (requestError) {
       if (["production/invalid-argument", "production/failed-precondition",

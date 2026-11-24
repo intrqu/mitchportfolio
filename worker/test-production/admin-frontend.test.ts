@@ -95,6 +95,28 @@ describe("production admin frontend boundary", () => {
     ]);
   });
 
+  it("sends sales and order archive requests to the authenticated production routes", async () => {
+    const requests: string[] = [];
+    const fetcher: typeof fetch = async (input, init) => {
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer admin-token");
+      requests.push(`${init?.method} ${new URL(String(input)).pathname}${new URL(String(input)).search}`);
+      return Response.json({ ok: true });
+    };
+    const auth = { currentUser: { getIdToken: async () => "admin-token" } };
+    const api = createProductionAdminApi(config, auth, fetcher);
+    await api.call("sales");
+    await api.call("listOrders", { archive: "archived", status: "pending" });
+    await api.call("archiveOrder", { orderId: "order/1" });
+    await api.call("restoreOrder", { orderId: "order/1" });
+
+    expect(requests).toEqual([
+      "GET /api/admin/sales",
+      "GET /api/admin/orders?archive=archived&status=pending",
+      "POST /api/admin/orders/order%2F1/archive",
+      "POST /api/admin/orders/order%2F1/restore"
+    ]);
+  });
+
   it("rejects unavailable or simulated actions and unauthenticated requests", async () => {
     const urls: string[] = [];
     const fetcher: typeof fetch = async (input) => {
