@@ -23,6 +23,7 @@ const PRODUCTION_PROJECT_ID = "mht-giftcards-production";
 const PRODUCTION_SITE_ORIGIN = "https://mitchharschtattoo.com";
 const PRODUCTION_SITE_URL = "https://mitchharschtattoo.com/";
 const PRODUCTION_HOSTNAME = "mitchharschtattoo.com";
+export const promotionActive = (env: ProductionEnv, now = Date.now()) => env.HOLIDAY_PROMOTION_ENABLED === "true" && now < Date.parse("2026-12-26T08:00:00Z");
 const MAX_BODY_BYTES = 16_384;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -253,7 +254,7 @@ async function createOrder(
   } catch (error) {
     fail(400, error instanceof Error ? error.message : "Order details are invalid.", "invalid-argument");
   }
-  const maxAmount = Number(env.MAX_ORDER_AMOUNT_CENTS);
+  const maxAmount = Math.min(100000, Number(env.MAX_ORDER_AMOUNT_CENTS));
   if (orderInput.amountCents > maxAmount) {
     fail(400, "The order amount exceeds the configured maximum.", "amount-too-large");
   }
@@ -279,10 +280,10 @@ async function createOrder(
     await env.DB.prepare(`
       INSERT OR IGNORE INTO gift_card_orders
         (id, order_ref, idempotency_hash, access_token_hash, purchaser_name, purchaser_email,
-         recipient_name, recipient_email, recipient_type, message, amount_cents, payment_method,
+         recipient_name, recipient_email, recipient_type, message, amount_cents, bonus_cents, payment_method,
          payment_status, certificate_status, remaining_balance_cents, environment, test_only,
          created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'interac_transfer',
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'interac_transfer',
               'pending_payment', 'not_issued', NULL, 'production', 0, ?, ?)
     `).bind(
       id,
@@ -296,6 +297,7 @@ async function createOrder(
       orderInput.recipientType,
       orderInput.message,
       orderInput.amountCents,
+      promotionActive(env) ? Math.floor(orderInput.amountCents / 10000) * 2500 : 0,
       now,
       now
     ).run();
@@ -311,6 +313,8 @@ async function createOrder(
     orderRef: order.order_ref,
     accessToken,
     amountCents: order.amount_cents,
+    bonusCents: order.bonus_cents,
+    totalValueCents: order.amount_cents + order.bonus_cents,
     purchaserEmail: order.purchaser_email,
     interacEmail: env.PRODUCTION_INTERAC_EMAIL,
     emailSent: emails.confirmationEmailSent,
@@ -397,7 +401,7 @@ async function deliverCertificate(
     to: [certificate.recipient_email],
     subject: `Your Mitch Harsch Tattoo gift certificate ${order.order_ref}`,
     html: `<p>Your paid gift certificate is attached. Keep the redemption code private.</p>
-      <p>Order reference: <strong>${escapeHtml(order.order_ref)}</strong></p>`,
+      <p>Order reference: <strong>${escapeHtml(order.order_ref)}</strong><br>Gift card value: $${(certificate.initial_value_cents / 100).toFixed(2)} CAD (including $${(order.bonus_cents / 100).toFixed(2)} bonus credit)</p>`,
     attachment: { filename: `${order.order_ref}.pdf`, content: pdf }
   }, fetcher);
 }
@@ -435,8 +439,8 @@ async function issueCertificate(
           (code_hash, order_id, encrypted_code, code_iv, code_auth_tag, encryption_key_version,
            recipient_name, recipient_email, initial_value_cents, balance_cents, status,
            environment, test_only, created_at, updated_at)
-        SELECT ?, o.id, ?, ?, ?, 1, o.recipient_name, o.recipient_email, o.amount_cents,
-               o.amount_cents, 'issued', 'production', 0, ?, ?
+        SELECT ?, o.id, ?, ?, ?, 1, o.recipient_name, o.recipient_email, o.amount_cents + o.bonus_cents,
+               o.amount_cents + o.bonus_cents, 'issued', 'production', 0, ?, ?
         FROM gift_card_orders o
         WHERE o.id = ? AND o.payment_status = 'paid'
           AND o.payment_verified_at IS NOT NULL AND o.payment_verified_by IS NOT NULL
@@ -444,7 +448,7 @@ async function issueCertificate(
       `).bind(codeHash, encrypted.ciphertext, encrypted.iv, encrypted.authTag, now, now, order.id),
       env.DB.prepare(`
         UPDATE gift_card_orders
-        SET certificate_status = 'issued', remaining_balance_cents = amount_cents, updated_at = ?
+        SET certificate_status = 'issued', remaining_balance_cents = amount_cents + bonus_cents, updated_at = ?
         WHERE id = ? AND payment_status = 'paid'
           AND certificate_status = 'not_issued' AND environment = 'production' AND test_only = 0
           AND EXISTS (SELECT 1 FROM gift_certificates WHERE order_id = ? AND environment = 'production' AND test_only = 0)
@@ -512,6 +516,7 @@ async function confirmPayment(
     to: [order.purchaser_email],
     subject: `Payment confirmed for gift card order ${order.order_ref}`,
     html: `<p>Payment for order <strong>${escapeHtml(order.order_ref)}</strong> has been confirmed.</p>
+      <p>Purchase: $${(order.amount_cents / 100).toFixed(2)} CAD; bonus credit: $${(order.bonus_cents / 100).toFixed(2)} CAD; gift card value: $${((order.amount_cents + order.bonus_cents) / 100).toFixed(2)} CAD.</p>
       <p>Your gift certificate is attached in a separate email.</p>`
   }, fetcher);
   const issuance = await issueCertificate(order.id, env, fetcher);
@@ -909,7 +914,9 @@ export async function handleProductionRequest(
       return response({
         ok: true,
         environment: "production",
-        orderingEnabled: env.ORDERS_ENABLED === "true"
+        orderingEnabled: env.ORDERS_ENABLED === "true",
+        promotionActive: promotionActive(env),
+        maxAmountCents: Math.min(100000, Number(env.MAX_ORDER_AMOUNT_CENTS))
       }, 200, origin, env.PUBLIC_SITE_ORIGIN);
     }
     if (url.pathname === "/api/orders" && request.method === "POST") {

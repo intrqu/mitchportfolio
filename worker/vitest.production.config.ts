@@ -13,6 +13,7 @@ export default defineConfig(async () => {
         miniflare: {
           bindings: {
             ORDERS_ENABLED: "true",
+            HOLIDAY_PROMOTION_ENABLED: "false",
             MAX_ORDER_AMOUNT_CENTS: "100000",
             PRODUCTION_ADMIN_EMAILS: "admin@example.com",
             PRODUCTION_INTERAC_EMAIL: "payments@example.com",

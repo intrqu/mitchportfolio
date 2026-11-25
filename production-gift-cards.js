@@ -21,10 +21,37 @@ const activeOrderKey = "mhtProductionGiftCardOrder";
 const config = window.MHT_PRODUCTION_GIFT_CARDS_CONFIG;
 let workerApiBaseUrl = "";
 let orderingEnabled = false;
+let promotionActive = false;
+let maxAmountCents = 100000;
 let turnstileWidget = null;
 let turnstileToken = "";
 let activeOrder = null;
 let submitting = false;
+const promotionEnd = Date.parse("2026-12-26T08:00:00Z");
+
+function setPromotion(active) {
+	promotionActive = active && Date.now() < promotionEnd;
+	document.querySelector("#holiday-promotion").hidden = !promotionActive;
+	document.querySelector("#holiday-sidebar").hidden = !promotionActive;
+	document.querySelector("#bonus-row").hidden = !promotionActive;
+	form.querySelectorAll(".preset-bonus").forEach((label) => {
+		label.hidden = !promotionActive;
+	});
+	updateTotal();
+}
+
+async function refreshPromotion() {
+	try {
+		const response = await fetch(`${workerApiBaseUrl}/api/healthz`, {
+			headers: { Accept: "application/json" }, cache: "no-store",
+		});
+		const health = await readJson(response);
+		if (!response.ok || health.environment !== "production") throw new Error();
+		setPromotion(health.orderingEnabled === true && health.promotionActive === true);
+	} catch {
+		setPromotion(false);
+	}
+}
 
 function selectedAmount() {
 	if (customAmount.value !== "")
@@ -40,10 +67,14 @@ function updateTotal() {
 		Number.isSafeInteger(cents) && cents > 0
 			? `${formatCurrency(cents)} CAD`
 			: "Enter an amount";
+	const bonus = promotionActive && Number.isSafeInteger(cents) && cents > 0 && cents <= maxAmountCents ? Math.floor(cents / 10000) * 2500 : 0;
+	document.querySelector("#bonus").textContent = `${formatCurrency(bonus)} CAD`;
+	document.querySelector("#gift-value").textContent = Number.isSafeInteger(cents) && cents > 0 && cents <= maxAmountCents ? `${formatCurrency(cents + bonus)} CAD` : "Enter a valid amount";
 }
 
 function setUnavailable(heading, message) {
 	orderingEnabled = false;
+	setPromotion(false);
 	submitButton.disabled = true;
 	submitButton.textContent = "Ordering unavailable";
 	turnstileTarget.hidden = true;
@@ -54,7 +85,7 @@ function setUnavailable(heading, message) {
 }
 
 function setAvailable() {
-	statusHeading.textContent = "Complete the anti-spam check to continue.";
+	statusHeading.textContent = "Complete the security check to continue.";
 	statusCopy.textContent =
 		"Online ordering is available. Payment instructions appear after a successful order; Mitch confirms each transfer manually.";
 	submitNote.textContent =
@@ -125,8 +156,8 @@ void initialize();
 async function initialize() {
 	if (window.location.origin !== PRODUCTION_SITE_ORIGIN) {
 		setUnavailable(
-			"Production ordering is unavailable in this local preview.",
-			"This page does not contact the production Worker from local or staging origins. No details will be sent or stored. Do not send money.",
+			"Online ordering is unavailable here.",
+			"Please visit mitchharschtattoo.com to place an order. No payment is due.",
 		);
 		return;
 	}
@@ -136,8 +167,8 @@ async function initialize() {
 		productionConfig = validateProductionAdminConfig(config);
 	} catch {
 		setUnavailable(
-			"Production checkout is not configured.",
-			"The production configuration could not be verified. No order has been submitted.",
+			"Online ordering is temporarily unavailable.",
+			"Please try again later. No order has been submitted.",
 		);
 		return;
 	}
@@ -158,6 +189,8 @@ async function initialize() {
 		if (!response.ok || health.environment !== "production") {
 			throw new Error("The production checkout could not be verified.");
 		}
+		maxAmountCents = Math.min(100000, health.maxAmountCents || 100000);
+		setPromotion(health.orderingEnabled === true && health.promotionActive === true);
 		if (health.orderingEnabled !== true) {
 			setUnavailable(
 				"Online ordering is temporarily disabled.",
@@ -170,19 +203,25 @@ async function initialize() {
 			!config.turnstileSiteKey
 		) {
 			setUnavailable(
-				"Production anti-spam verification is not configured.",
-				"Ordering remains unavailable until the production Turnstile site key is configured.",
+				"Online ordering is temporarily unavailable.",
+				"The security check is unavailable. Please try again later.",
 			);
 			return;
 		}
 
 		orderingEnabled = true;
 		setAvailable();
+		window.setInterval(refreshPromotion, 60000);
+		window.addEventListener("focus", refreshPromotion);
+		const timeUntilEnd = promotionEnd - Date.now();
+		if (timeUntilEnd > 0 && timeUntilEnd <= 2147483647) {
+			window.setTimeout(() => setPromotion(false), timeUntilEnd);
+		}
 		await initializeTurnstile(config.turnstileSiteKey);
 	} catch {
 		setUnavailable(
-			"Production checkout could not be verified.",
-			"The production API or anti-spam check is unavailable. No order has been submitted. Please try again later.",
+			"Online ordering is temporarily unavailable.",
+			"We couldn't open checkout. No order has been submitted. Please try again later.",
 		);
 	}
 }
@@ -208,7 +247,7 @@ async function initializeTurnstile(siteKey) {
 			turnstileToken = "";
 			submitButton.disabled = true;
 			submitButton.textContent = "Complete verification to continue";
-			setError("The anti-spam check failed. Please try again.");
+			setError("The security check failed. Please try again.");
 		},
 	});
 }
@@ -249,14 +288,14 @@ async function submitOrder() {
 		return;
 	}
 	if (!turnstileToken) {
-		setError("Complete the anti-spam check before submitting.");
+		setError("Complete the security check before submitting.");
 		return;
 	}
 	if (!form.reportValidity()) return;
 
 	const amountCents = selectedAmount();
-	if (!Number.isSafeInteger(amountCents) || amountCents < 1) {
-		setError("Enter a valid amount greater than zero.");
+	if (!Number.isSafeInteger(amountCents) || amountCents < 1 || amountCents > maxAmountCents) {
+		setError("Enter a valid amount up to $1,000 CAD.");
 		return;
 	}
 	const isOther =
@@ -317,7 +356,7 @@ async function submitOrder() {
 			!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.interacEmail)
 		) {
 			throw new Error(
-				"The production Worker returned an invalid order confirmation.",
+				"We couldn't confirm your order. Check your email before trying again.",
 			);
 		}
 
@@ -325,6 +364,8 @@ async function submitOrder() {
 			orderRef: result.orderRef,
 			accessToken: result.accessToken,
 			amountCents: result.amountCents,
+			bonusCents: result.bonusCents,
+			totalValueCents: result.totalValueCents,
 			purchaserEmail: result.purchaserEmail,
 			interacEmail: result.interacEmail,
 			emailSent: result.emailSent,
@@ -424,6 +465,7 @@ function showOrderResult() {
 			: "Use the instructions below. Mitch must verify the transfer before a certificate is issued.";
 	document.querySelector("#order-reference").textContent =
 		activeOrder.orderRef;
+	document.querySelector("#result-value").textContent = `${formatCurrency(activeOrder.totalValueCents || activeOrder.amountCents)} CAD (bonus ${formatCurrency(activeOrder.bonusCents || 0)})`;
 	document.querySelector("#transfer-amount").textContent =
 		`${formatCurrency(activeOrder.amountCents)} CAD`;
 	document.querySelector("#transfer-email").textContent =
@@ -483,7 +525,7 @@ function getOrCreateSessionValue(key, create) {
 		return value;
 	} catch {
 		throw new Error(
-			"Secure order retry storage is unavailable. No order was submitted.",
+			"Your browser couldn't save your order session. Please enable browser storage and try again.",
 		);
 	}
 }
@@ -503,7 +545,7 @@ async function readJson(response) {
 	try {
 		return await response.json();
 	} catch {
-		throw new Error("The production Worker returned an invalid response.");
+		throw new Error("We couldn't confirm the request. Please check your email before trying again.");
 	}
 }
 

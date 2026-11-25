@@ -9,6 +9,7 @@ export interface ProductionEnv {
   TURNSTILE_EXPECTED_HOSTNAME: string;
   EMAIL_FROM: string;
   ORDERS_ENABLED: string;
+  HOLIDAY_PROMOTION_ENABLED?: string;
   MAX_ORDERS_PER_DAY: string;
   MAX_ORDER_AMOUNT_CENTS: string;
   EMAIL_DAILY_LIMIT: string;
@@ -32,6 +33,7 @@ export interface ProductionOrder {
   recipient_type: "self" | "other";
   message: string;
   amount_cents: number;
+  bonus_cents: number;
   payment_method: "interac_transfer";
   payment_status: "pending_payment" | "payment_reported" | "paid";
   certificate_status: "not_issued" | "issued" | "partially_redeemed" | "redeemed";

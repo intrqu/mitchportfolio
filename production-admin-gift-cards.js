@@ -163,6 +163,7 @@ async function loadSales() {
   if (request !== salesLoad || user !== auth.currentUser) return;
 
   document.querySelector("#sales-confirmed").textContent = money(sales.confirmedRevenueCents);
+  document.querySelector("#sales-promotion").textContent = money(sales.promotionalCreditCents);
   document.querySelector("#sales-this-month").textContent = money(sales.thisMonthRevenueCents);
   document.querySelector("#sales-outstanding").textContent = money(sales.outstandingBalanceCents);
   document.querySelector("#sales-redeemed").textContent = money(sales.totalRedeemedCents);

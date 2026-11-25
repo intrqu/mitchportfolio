@@ -212,25 +212,20 @@ function verifyOutput() {
 	if (
 		!homepage.includes('<a href="gift-cards/">Gift Cards</a>') ||
 		!homepage.includes("Buy a Gift Card") ||
-		!homepage.includes("Online ordering is temporarily disabled.") ||
 		homepage.includes("Coming Soon")
 	) {
 		throw new Error(
-			"The production homepage must link to the disabled gift-card order page.",
+			"The production homepage must link to the gift-card order page.",
 		);
 	}
 	const productionSettings = readFileSync(
 		path.join(root, "worker", "wrangler.production.toml"),
 		"utf8",
 	);
-	if (
-		!/^\s*ORDERS_ENABLED\s*=\s*"false"\s*$/m.test(productionSettings) ||
-		!/^\s*MAX_ORDER_AMOUNT_CENTS\s*=\s*"0"\s*$/m.test(productionSettings)
-	) {
-		throw new Error(
-			"Production ordering must remain disabled with a zero maximum order amount.",
-		);
+	if (!/^\s*MAX_ORDER_AMOUNT_CENTS\s*=\s*"100000"\s*$/m.test(productionSettings)) {
+		throw new Error("Production maximum must be $1,000 CAD.");
 	}
+
 	const html = readFileSync(path.join(output, productionFiles[0]), "utf8");
 	if (
 		!html.includes("production-admin-gift-cards.js") ||
@@ -278,7 +273,7 @@ function verifyOutput() {
 		!customerPage.includes('value="15000"') ||
 		!customerPage.includes('value="20000"') ||
 		!customerPage.includes("Interac e-Transfer") ||
-		!customerPage.includes("confirmation page and email") ||
+		!customerPage.includes("Receive your digital gift certificate by email") ||
 		customerPage.includes("firebase-config.js") ||
 		customerPage.includes('src="../gift-cards.js"') ||
 		customerPage.includes("turnstile/v0/api.js") ||

@@ -13,6 +13,7 @@ const studioOffset = new Intl.DateTimeFormat("en-CA", {
 
 interface SalesTotals {
   confirmedRevenueCents: number;
+  promotionalCreditCents: number;
   outstandingBalanceCents: number;
   totalRedeemedCents: number;
 }
@@ -47,6 +48,10 @@ export async function getSales(env: ProductionEnv, now = new Date()) {
          WHERE payment_status = 'paid' AND payment_verified_at IS NOT NULL
            AND payment_verified_by IS NOT NULL AND environment = 'production'
            AND test_only = 0) AS confirmedRevenueCents,
+        (SELECT COALESCE(SUM(bonus_cents), 0) FROM gift_card_orders
+         WHERE payment_status = 'paid' AND payment_verified_at IS NOT NULL
+           AND payment_verified_by IS NOT NULL AND environment = 'production'
+           AND test_only = 0) AS promotionalCreditCents,
         (SELECT COALESCE(SUM(balance_cents), 0) FROM gift_certificates
          WHERE environment = 'production' AND test_only = 0) AS outstandingBalanceCents,
         (SELECT COALESCE(SUM(amount_cents), 0) FROM gift_card_redemptions

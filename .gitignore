@@ -3,6 +3,7 @@ functions/lib/
 functions/.env*
 functions/.runtimeconfig.json
 _staging-dist/
+_production-pages-dist/
 worker/.dev.vars
 worker/.dev.vars.*
 !worker/.dev.vars.example

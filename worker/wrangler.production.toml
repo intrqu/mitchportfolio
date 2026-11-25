@@ -12,7 +12,9 @@ TURNSTILE_EXPECTED_HOSTNAME = "mitchharschtattoo.com"
 EMAIL_FROM = "Mitch Harsch Tattoo <giftcards@mitchharschtattoo.com>"
 ORDERS_ENABLED = "true"
 MAX_ORDERS_PER_DAY = "20"
-MAX_ORDER_AMOUNT_CENTS = "50000"
+MAX_ORDER_AMOUNT_CENTS = "100000"
+# Set to false to stop awarding new promotional credit.
+HOLIDAY_PROMOTION_ENABLED = "true"
 EMAIL_DAILY_LIMIT = "80"
 
 [[d1_databases]]

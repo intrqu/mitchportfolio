@@ -163,3 +163,6 @@ The initial Worker deployment, production secret configuration, and initial
 D1 migration are complete. No production email, customer order, certificate,
 or redemption has been created; no DNS change, Pages publication, or
 live-ordering enablement has been performed.
+
+
+Holiday promotion: `HOLIDAY_PROMOTION_ENABLED` in `wrangler.production.toml` controls new orders. Set it to `false` and deploy the Worker to disable it early. The Worker stops awarding bonuses automatically at midnight after December 25, 2026 in Vancouver (2026-12-26 08:00 UTC). Apply production migration 0003 before deploying the Worker; existing orders receive zero bonus and existing certificates are unchanged. Orders retain the bonus calculated when they were placed, even if paid later. Revenue reports count purchase amounts and report paid-order promotional credit separately.

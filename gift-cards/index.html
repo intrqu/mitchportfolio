@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Preview the Mitch Harsch Tattoo digital gift certificate order form.">
+  <meta name="description" content="Buy a Mitch Harsch Tattoo digital gift certificate.">
   <meta name="theme-color" content="#100e0d">
   <link rel="canonical" href="https://mitchharschtattoo.com/gift-cards/">
   <title>Buy a Gift Card | Mitch Harsch Tattoo</title>
@@ -33,26 +33,31 @@
 
     <div id="production-order-disabled" class="production-order-disabled" role="status" aria-live="polite">
       <strong id="order-status-heading">Online ordering is temporarily disabled.</strong>
-      <p id="order-status-copy">This is a preview only. No order will be created, and no details will be sent or stored. Do not send money.</p>
+      <p id="order-status-copy">Ordering is unavailable right now. No order has been placed and no payment is due. Do not send money.</p>
     </div>
 
     <div class="gift-layout">
       <form id="gift-order" class="gift-form" aria-describedby="production-order-disabled">
+        <aside id="holiday-promotion" class="holiday-promotion" hidden>
+          <strong>Give more this holiday</strong>
+          <p>Get $25 in bonus tattoo credit for every complete $100 purchased, through December 25, 2026 (Vancouver time).</p>
+          <p>Buy up to $1,000 and receive up to $1,250 in gift card value. You pay only the purchase amount.</p>
+        </aside>
         <fieldset>
           <legend>Choose an amount</legend>
           <div class="amount-options">
-            <label><input type="radio" name="preset" value="5000"><span>$50</span></label>
-            <label><input type="radio" name="preset" value="10000" checked><span>$100</span></label>
-            <label><input type="radio" name="preset" value="15000"><span>$150</span></label>
-            <label><input type="radio" name="preset" value="20000"><span>$200</span></label>
+            <label><input type="radio" name="preset" value="5000"><span>$50<small class="preset-bonus" hidden>+$0 bonus</small></span></label>
+            <label><input type="radio" name="preset" value="10000" checked><span>$100<small class="preset-bonus" hidden>+$25 bonus</small></span></label>
+            <label><input type="radio" name="preset" value="15000"><span>$150<small class="preset-bonus" hidden>+$25 bonus</small></span></label>
+            <label><input type="radio" name="preset" value="20000"><span>$200<small class="preset-bonus" hidden>+$50 bonus</small></span></label>
           </div>
           <label for="custom-amount">Or enter a custom amount (CAD)</label>
           <div class="currency-input">
             <span aria-hidden="true">$</span>
-            <input id="custom-amount" type="number" min="0.01" step="0.01" inputmode="decimal"
+            <input id="custom-amount" type="number" min="0.01" max="1000" step="0.01" inputmode="decimal"
               placeholder="Custom amount" aria-describedby="amount-help">
           </div>
-          <p id="amount-help" class="form-note">The total updates as you choose an amount. Purchases are not available in this preview.</p>
+          <p id="amount-help" class="form-note">Choose a purchase amount up to $1,000 CAD.</p>
         </fieldset>
 
         <fieldset>
@@ -97,8 +102,11 @@
           </label>
         </fieldset>
 
-        <div class="order-total"><span>Order total</span><strong id="total">$100.00 CAD</strong></div>
-        <div id="order-turnstile" aria-label="Anti-spam verification" hidden></div>
+        <div class="order-total"><span>Purchase amount</span><strong id="total">$100.00 CAD</strong></div>
+        <div id="bonus-row" class="order-total bonus-total" hidden><span>Holiday bonus credit</span><strong id="bonus">$0.00 CAD</strong></div>
+        <div class="order-total"><span>Total gift card value</span><strong id="gift-value">$100.00 CAD</strong></div>
+        <p class="form-note">You pay only the purchase amount by Interac e-Transfer.</p>
+        <div id="order-turnstile" aria-label="Security check" hidden></div>
         <p id="order-error" class="gift-error" role="alert" aria-live="assertive"></p>
         <button id="submit-order" class="solid gift-submit" type="submit"
           aria-describedby="production-order-disabled" disabled>Ordering unavailable</button>
@@ -109,11 +117,18 @@
         <span class="gift-ornament" aria-hidden="true">✧</span>
         <p class="kicker">A thoughtful offering</p>
         <h2 id="payment-info-title">Made for the macabre.</h2>
-        <p>Gift certificates can be applied toward a tattoo with Mitch Harsch in East Vancouver.</p>
-        <h3>When ordering is enabled</h3>
-        <p>The confirmation page and email will show a unique order reference, the exact amount, and Interac recipient details. Mitch confirms payment before a certificate is issued.</p>
-        <p>No email or payment instructions are sent in this preview. No transfer is due.</p>
-        <a href="../#booking">Questions? Send an inquiry ↗</a>
+        <p>Give someone something truly personal — a tattoo experience with Mitch Harsch in East Vancouver.</p>
+        <h3>How it works</h3>
+        <ol class="gift-steps">
+          <li>Choose your gift card amount.</li>
+          <li>Complete your payment via Interac e-Transfer.</li>
+          <li>Receive your digital gift certificate by email once payment is confirmed.</li>
+        </ol>
+        <div id="holiday-sidebar" hidden>
+          <h3>A little extra this Christmas</h3>
+          <p>Enjoy an additional $25 in tattoo credit for every $100 purchased through December 25th.</p>
+        </div>
+        <a href="../#booking">Questions? Get in touch.</a>
       </aside>
     </div>
 
@@ -127,6 +142,7 @@
           <dd><code id="order-reference"></code>
             <button type="button" class="copy-button" id="copy-reference">Copy order number</button></dd>
         </div>
+        <div><dt>Gift card value</dt><dd id="result-value"></dd></div>
         <div><dt>Send exactly</dt><dd id="transfer-amount"></dd></div>
         <div>
           <dt>Send to</dt>

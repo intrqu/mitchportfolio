@@ -99,9 +99,18 @@
   display: grid;
   place-items: center;
   min-height: 48px;
+  padding: 0.5rem 0.2rem;
   border: 1px solid var(--edge);
   font-family: var(--label);
   font-size: 1.2rem;
+}
+.preset-bonus {
+  color: var(--accent);
+  font: 600 0.78rem var(--label);
+}
+.preset-bonus[hidden],
+.bonus-total[hidden] {
+  display: none;
 }
 .amount-options input:checked + span {
   border-color: var(--accent);
@@ -236,8 +245,18 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.gift-aside p:not(.kicker) {
+.gift-aside p:not(.kicker),
+.gift-steps {
   color: var(--muted);
+}
+.gift-steps {
+  padding-left: 1.3rem;
+}
+.gift-steps li + li {
+  margin-top: 0.5rem;
+}
+#holiday-sidebar h3 {
+  color: var(--accent);
 }
 .gift-aside a {
   color: var(--accent);
@@ -265,3 +284,18 @@
     gap: 0.2rem;
   }
 }
+
+.holiday-promotion {
+  padding: 1.25rem;
+  border: 1px solid var(--accent);
+  border-left-width: 4px;
+  background: var(--forest);
+}
+.holiday-promotion strong {
+  color: var(--accent);
+  font: 600 1.35rem var(--label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.holiday-promotion p { margin: .5rem 0 0; }
+.holiday-promotion[hidden] { display: none; }

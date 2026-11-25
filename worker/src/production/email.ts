@@ -160,6 +160,8 @@ export async function sendOrderEmails(
 ): Promise<{ confirmationEmailSent: boolean; adminEmailSent: boolean }> {
   const orderRef = escapeHtml(order.order_ref);
   const amount = (order.amount_cents / 100).toFixed(2);
+  const bonus = (order.bonus_cents / 100).toFixed(2);
+  const total = ((order.amount_cents + order.bonus_cents) / 100).toFixed(2);
   const interacEmail = escapeHtml(env.PRODUCTION_INTERAC_EMAIL);
   const confirmationEmailSent = await sendProductionEmail(env, {
     orderId: order.id,
@@ -169,6 +171,7 @@ export async function sendOrderEmails(
     subject: `Gift card order ${order.order_ref} — payment instructions`,
     html: `<p>Your Mitch Harsch Tattoo gift certificate order was received.</p>
       <p>Order reference: <strong>${orderRef}</strong><br>Amount to transfer: <strong>$${amount} CAD</strong></p>
+      <p>Bonus tattoo credit: $${bonus} CAD<br>Total gift card value: $${total} CAD</p>
       <p>Send an Interac e-Transfer to <strong>${interacEmail}</strong> for exactly <strong>$${amount} CAD</strong>.
       Include order reference <strong>${orderRef}</strong> in the transfer message.</p>
       <p>Your certificate will be issued only after Mitch confirms receipt of the payment.</p>`
@@ -181,7 +184,7 @@ export async function sendOrderEmails(
     to: [...parseEmailAllowlist(env.PRODUCTION_ADMIN_EMAILS)],
     subject: `New gift card order ${order.order_ref}`,
     html: `<p>A gift card order is awaiting payment.</p>
-      <p>Reference: ${orderRef}<br>Value: $${amount} CAD<br>
+      <p>Reference: ${orderRef}<br>Purchase: $${amount} CAD<br>Bonus credit: $${bonus} CAD<br>Gift card value: $${total} CAD<br>
       Purchaser: ${escapeHtml(order.purchaser_name)} (${escapeHtml(order.purchaser_email)})</p>`
   }, fetcher);
   return { confirmationEmailSent, adminEmailSent };

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decryptSecret, randomBase64Url } from "../src/crypto.js";
-import { handleProductionRequest, normalizeProductionCode } from "../src/production/index.js";
+import { handleProductionRequest, normalizeProductionCode, promotionActive } from "../src/production/index.js";
 import { getSales } from "../src/production/sales.js";
 import type { ProductionEnv } from "../src/production/types.js";
 import { normalizeRedemptionCode } from "../src/validation.js";
@@ -580,5 +580,48 @@ describe("production gift card Worker", () => {
       token: "valid-admin"
     });
     expect(simulate.status).toBe(404);
+  });
+});
+
+
+describe("holiday promotion", () => {
+  it("ends at Vancouver midnight and can be disabled", () => {
+    const enabled = { ...workerEnv, HOLIDAY_PROMOTION_ENABLED: "true" };
+    expect(promotionActive(enabled, Date.parse("2026-12-26T07:59:59.999Z"))).toBe(true);
+    expect(promotionActive(enabled, Date.parse("2026-12-26T08:00:00Z"))).toBe(false);
+    expect(promotionActive({ ...enabled, HOLIDAY_PROMOTION_ENABLED: "false" }, Date.parse("2026-12-25T20:00:00Z"))).toBe(false);
+  });
+  it("calculates complete $100 increments and rejects purchases over $1,000", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-12-25T20:00:00Z"));
+    try {
+      const env = { ...workerEnv, HOLIDAY_PROMOTION_ENABLED: "true" };
+      for (const [amountCents, bonusCents] of [[9999, 0], [10000, 2500], [19999, 2500], [20000, 5000]]) {
+        const response = await callApi("/api/orders", { body: orderBody({ amountCents }), env });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({ amountCents, bonusCents, totalValueCents: amountCents + bonusCents });
+      }
+      expect((await callApi("/api/orders", { body: orderBody({ amountCents: 100001 }), env })).status).toBe(400);
+    } finally { clock.mockRestore(); }
+  });
+  it("awards and redeems bonus while reporting the purchase as revenue", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-12-25T20:00:00Z"));
+    try {
+      const env = { ...workerEnv, HOLIDAY_PROMOTION_ENABLED: "true" };
+      const body = orderBody({ amountCents: 100000 });
+      const response = await callApi("/api/orders", { body, env });
+      expect(response.status).toBe(200);
+      const result = await response.json() as { orderRef: string; bonusCents: number; totalValueCents: number; amountCents: number };
+      expect(result).toMatchObject({ amountCents: 100000, bonusCents: 25000, totalValueCents: 125000 });
+      expect(sentEmails.some(({ body }) => String(body.html).includes("$1250.00"))).toBe(true);
+      const [{ id }] = (await listOrders()).orders;
+      expect((await confirmOrder(id)).status).toBe(200);
+      const cert = await workerEnv.DB.prepare("SELECT * FROM gift_certificates WHERE order_id = ?").bind(id).first<{ initial_value_cents: number; balance_cents: number; encrypted_code: string; code_iv: string; code_auth_tag: string }>();
+      expect(cert).toMatchObject({ initial_value_cents: 125000, balance_cents: 125000 });
+      const code = await decryptSecret({ ciphertext: cert!.encrypted_code, iv: cert!.code_iv, authTag: cert!.code_auth_tag }, workerEnv.CERTIFICATE_ENCRYPTION_KEY);
+      const redemption = await callApi("/api/admin/certificates/redeem", { token: "valid-admin", body: { code, amountCents: 125000, requestId: crypto.randomUUID(), note: "" } });
+      expect(redemption.status).toBe(200);
+      expect(await getSales(workerEnv)).toMatchObject({ confirmedRevenueCents: 100000, promotionalCreditCents: 25000, outstandingBalanceCents: 0, totalRedeemedCents: 125000 });
+      expect((await callApi(`/api/orders/${result.orderRef}/certificate.pdf`, { accessToken: String(body.accessToken) })).status).toBe(200);
+    } finally { clock.mockRestore(); }
   });
 });
