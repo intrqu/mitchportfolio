@@ -257,6 +257,32 @@
 .gift-steps {
   color: var(--muted);
 }
+.email-help {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+.email-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border-left: 3px solid var(--accent);
+  background: rgb(35 59 46 / 45%);
+  line-height: 1.5;
+}
+.email-notice svg {
+  flex: 0 0 1.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--accent);
+}
+.email-notice p { margin: 0; }
+.email-notice p + p { margin-top: 0.5rem; }
+.email-notice strong, .email-address { color: var(--accent); }
+.email-address { overflow-wrap: anywhere; }
 .gift-steps {
   padding-left: 1.3rem;
 }
