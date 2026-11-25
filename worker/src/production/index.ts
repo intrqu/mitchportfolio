@@ -690,6 +690,18 @@ async function retryOrderEmails(
   return jsonResponse(await sendOrderEmails(order, env, fetcher));
 }
 
+async function resendAdminNotification(
+  orderId: string,
+  requestId: string,
+  env: ProductionEnv,
+  fetcher: typeof fetch
+): Promise<Response> {
+  const order = await orderById(env, orderId);
+  if (!order) fail(404, "Gift card order was not found.", "not-found");
+  const result = await sendOrderEmails(order, env, fetcher, requestId, true);
+  return jsonResponse({ adminEmailSent: result.adminEmailSent });
+}
+
 async function resendCertificate(
   orderId: string,
   requestId: string,
@@ -966,6 +978,18 @@ export async function handleProductionRequest(
         const retryEmails = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/retry-order-emails$/);
         if (retryEmails) {
           const result = await retryOrderEmails(retryEmails[1], env, fetcher);
+          return response(await result.json(), result.status, origin, env.PUBLIC_SITE_ORIGIN);
+        }
+        const resendAdmin = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/resend-admin-notification$/);
+        if (resendAdmin) {
+          const body = await readJson(request);
+          let requestId: string;
+          try {
+            requestId = validateRequestId(body.requestId);
+          } catch (error) {
+            fail(400, error instanceof Error ? error.message : "A valid request ID is required.", "invalid-argument");
+          }
+          const result = await resendAdminNotification(resendAdmin[1], requestId, env, fetcher);
           return response(await result.json(), result.status, origin, env.PUBLIC_SITE_ORIGIN);
         }
         const resend = url.pathname.match(/^\/api\/admin\/orders\/([^/]+)\/resend$/);

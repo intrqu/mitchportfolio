@@ -33,6 +33,10 @@ const ACTION_ROUTES = Object.freeze({
     method: "POST",
     path: (data) => `/api/admin/orders/${encodeURIComponent(data.orderId)}/retry-order-emails`
   },
+  resendAdminNotification: {
+    method: "POST",
+    path: (data) => `/api/admin/orders/${encodeURIComponent(data.orderId)}/resend-admin-notification`
+  },
   resendCertificate: {
     method: "POST",
     path: (data) => `/api/admin/orders/${encodeURIComponent(data.orderId)}/resend`

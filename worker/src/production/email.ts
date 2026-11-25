@@ -84,28 +84,39 @@ export async function sendProductionEmail(
   }
 
   try {
-    const response = await fetcher("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": input.idempotencyKey
-      },
-      signal: AbortSignal.timeout(8_000),
-      body: JSON.stringify(body)
-    });
+    let response: Response | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      response = await fetcher("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": input.idempotencyKey
+        },
+        signal: AbortSignal.timeout(8_000),
+        body: JSON.stringify(body)
+      });
+      if (response.status !== 429 || attempt === 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+    if (!response) throw new Error("Email request was not attempted.");
     if (!response.ok) {
       await markDeliveryFailed(env, input, `provider-http-${response.status}`);
-      console.error("Production email delivery failed.", { status: response.status, type: input.emailType });
+      console.error("Production email delivery failed.", { orderId: input.orderId, status: response.status, type: input.emailType });
       return false;
     }
     const result = await response.json() as { id?: string };
+    if (typeof result.id !== "string" || !result.id.trim()) {
+      await markDeliveryFailed(env, input, "provider-missing-message-id");
+      console.error("Production email delivery failed.", { orderId: input.orderId, type: input.emailType, reason: "provider-missing-message-id" });
+      return false;
+    }
     const sentAt = new Date().toISOString();
-    await env.DB.prepare(`
+    const deliveryUpdate = env.DB.prepare(`
       UPDATE gift_card_email_deliveries
       SET delivery_status = 'sent', provider_message_id = ?, last_error = NULL, updated_at = ?
       WHERE idempotency_key = ?
-    `).bind(result.id ?? null, sentAt, input.idempotencyKey).run();
+    `).bind(result.id, sentAt, input.idempotencyKey);
     const timestampColumn = {
       order_confirmation: "order_email_sent_at",
       admin_new_order: "admin_email_sent_at",
@@ -113,19 +124,21 @@ export async function sendProductionEmail(
       payment_confirmation: "payment_email_sent_at",
       certificate_delivery: null
     }[input.emailType];
+    const updates = [deliveryUpdate];
     if (timestampColumn) {
-      await env.DB.prepare(
+      updates.push(env.DB.prepare(
         `UPDATE gift_card_orders SET ${timestampColumn} = ?, updated_at = ? WHERE id = ?`
-      ).bind(sentAt, sentAt, input.orderId).run();
+      ).bind(sentAt, sentAt, input.orderId));
     } else if (input.emailType === "certificate_delivery") {
-      await env.DB.prepare(`
+      updates.push(env.DB.prepare(`
         UPDATE gift_certificates SET email_sent_at = ?, updated_at = ? WHERE order_id = ?
-      `).bind(sentAt, sentAt, input.orderId).run();
+      `).bind(sentAt, sentAt, input.orderId));
     }
+    await env.DB.batch(updates);
     return true;
-  } catch {
+  } catch (error) {
     await markDeliveryFailed(env, input, "provider-request-failed");
-    console.error("Production email delivery failed.", { type: input.emailType });
+    console.error("Production email delivery failed.", { orderId: input.orderId, type: input.emailType, reason: "provider-request-failed", errorType: error instanceof Error ? error.name : "unknown" });
     return false;
   }
 }
@@ -136,6 +149,7 @@ async function markDeliveryFailed(
   reason: string
 ): Promise<void> {
   const now = new Date().toISOString();
+  console.error("Production email not accepted.", { orderId: input.orderId, type: input.emailType, reason });
   await env.DB.prepare(`
     INSERT INTO gift_card_email_deliveries
       (idempotency_key, order_id, email_type, recipient_email, delivery_status, last_error, created_at, updated_at)
@@ -156,14 +170,16 @@ async function markDeliveryFailed(
 export async function sendOrderEmails(
   order: ProductionOrder,
   env: ProductionEnv,
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = fetch,
+  adminRetryRequestId?: string,
+  adminOnly = false
 ): Promise<{ confirmationEmailSent: boolean; adminEmailSent: boolean }> {
   const orderRef = escapeHtml(order.order_ref);
   const amount = (order.amount_cents / 100).toFixed(2);
   const bonus = (order.bonus_cents / 100).toFixed(2);
   const total = ((order.amount_cents + order.bonus_cents) / 100).toFixed(2);
   const interacEmail = escapeHtml(env.PRODUCTION_INTERAC_EMAIL);
-  const confirmationEmailSent = await sendProductionEmail(env, {
+  const customerEmail: ProductionEmailInput = {
     orderId: order.id,
     emailType: "order_confirmation",
     idempotencyKey: `production-order-confirmation-${order.id}`,
@@ -175,18 +191,32 @@ export async function sendOrderEmails(
       <p>Send an Interac e-Transfer to <strong>${interacEmail}</strong> for exactly <strong>$${amount} CAD</strong>.
       Include order reference <strong>${orderRef}</strong> in the transfer message.</p>
       <p>Your certificate will be issued only after Mitch confirms receipt of the payment.</p>`
-  }, fetcher);
+  };
 
-  const adminEmailSent = await sendProductionEmail(env, {
+  const adminEmail: ProductionEmailInput = {
     orderId: order.id,
     emailType: "admin_new_order",
-    idempotencyKey: `production-admin-new-order-${order.id}`,
+    idempotencyKey: adminRetryRequestId
+      ? `production-admin-new-order-${order.id}-retry-${adminRetryRequestId}`
+      : `production-admin-new-order-${order.id}`,
     to: [...parseEmailAllowlist(env.PRODUCTION_ADMIN_EMAILS)],
     subject: `New gift card order ${order.order_ref}`,
     html: `<p>A gift card order is awaiting payment.</p>
       <p>Reference: ${orderRef}<br>Purchase: $${amount} CAD<br>Bonus credit: $${bonus} CAD<br>Gift card value: $${total} CAD<br>
       Purchaser: ${escapeHtml(order.purchaser_name)} (${escapeHtml(order.purchaser_email)})</p>`
-  }, fetcher);
+  };
+  // Attempt both even if a database error prevents recording one delivery.
+  const attempt = async (input: ProductionEmailInput) => {
+    try { return await sendProductionEmail(env, input, fetcher); }
+    catch (error) {
+      console.error("Production email attempt could not be recorded.", {
+        orderId: input.orderId, type: input.emailType, errorType: error instanceof Error ? error.name : "unknown"
+      });
+      return false;
+    }
+  };
+  const adminEmailSent = await attempt(adminEmail);
+  const confirmationEmailSent = adminOnly ? false : await attempt(customerEmail);
   return { confirmationEmailSent, adminEmailSent };
 }
 

@@ -585,6 +585,74 @@ describe("production gift card Worker", () => {
 
 
 describe("holiday promotion", () => {
+  it("notifies both admins and sends payment instructions for consecutive custom orders with unique keys", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-12-25T20:00:00Z"));
+    try {
+      const env = { ...workerEnv, HOLIDAY_PROMOTION_ENABLED: "true", PRODUCTION_ADMIN_EMAILS: "admin@example.com, second@example.com" };
+      for (const [amountCents, bonusCents] of [[69000, 15000], [31500, 7500], [100000, 25000]]) {
+        const response = await callApi("/api/orders", { body: orderBody({ amountCents }), env });
+        expect(response.status).toBe(200);
+        const result = await response.json() as { orderRef: string; bonusCents: number; adminEmailSent: boolean; emailSent: boolean };
+        expect(result).toMatchObject({ bonusCents, adminEmailSent: true, emailSent: true });
+        const admin = sentEmails.find(({ body }) => String(body.subject).includes(result.orderRef) && String(body.subject).includes("New gift card"));
+        const customer = sentEmails.find(({ body }) => String(body.subject).includes(result.orderRef) && String(body.subject).includes("payment instructions"));
+        expect(admin?.body.to).toEqual(["admin@example.com", "second@example.com"]);
+        expect(String(admin?.body.html)).toContain(`$${(amountCents / 100).toFixed(2)}`);
+        expect(String(admin?.body.html)).toContain(`$${((amountCents + bonusCents) / 100).toFixed(2)}`);
+        expect(customer?.body.to).toEqual(["customer@example.com"]);
+        expect(String(customer?.body.html)).toContain(`exactly <strong>$${(amountCents / 100).toFixed(2)} CAD`);
+      }
+      const keys = sentEmails.map((email) => email.idempotencyKey);
+      expect(keys).toHaveLength(6);
+      expect(new Set(keys).size).toBe(6);
+    } finally { clock.mockRestore(); }
+  });
+
+  it("records a missing provider ID as failure and retries admin notifications independently", async () => {
+    const originalFetcher = fetcher;
+    let failAdmin = true;
+    fetcher = async (input, init) => {
+      if (String(input) === "https://api.resend.com/emails" && failAdmin) {
+        failAdmin = false;
+        return Response.json({});
+      }
+      return originalFetcher(input, init);
+    };
+    const response = await callApi("/api/orders", { body: orderBody() });
+    expect(response.status).toBe(200);
+    const result = await response.json() as { orderRef: string; adminEmailSent: boolean; emailSent: boolean };
+    expect(result).toMatchObject({ adminEmailSent: false, emailSent: true });
+    const [{ id }] = (await listOrders()).orders;
+    const failed = await workerEnv.DB.prepare("SELECT delivery_status, last_error FROM gift_card_email_deliveries WHERE order_id = ? AND email_type = 'admin_new_order'").bind(id).first();
+    expect(failed).toMatchObject({ delivery_status: "failed", last_error: "provider-missing-message-id" });
+    const requestId = crypto.randomUUID();
+    const retry = () => callApi(`/api/admin/orders/${id}/resend-admin-notification`, { token: "valid-admin", body: { requestId } });
+    expect(await (await retry()).json()).toEqual({ adminEmailSent: true });
+    expect(await (await retry()).json()).toEqual({ adminEmailSent: true });
+    expect(sentEmails).toHaveLength(2);
+    expect(sentEmails.filter(({ body }) => String(body.subject).includes("New gift card"))).toHaveLength(1);
+    expect((await callApi(`/api/admin/orders/${id}/resend-admin-notification`, { token: "valid-customer", body: { requestId: crypto.randomUUID() } })).status).toBe(403);
+  });
+
+  it("retries provider throttling with the same idempotency key before accepting an order notification", async () => {
+    const originalFetcher = fetcher;
+    const adminKeys: Array<string | null> = [];
+    fetcher = async (input, init) => {
+      if (String(input) === "https://api.resend.com/emails") {
+        const key = new Headers(init?.headers).get("Idempotency-Key");
+        if (key?.startsWith("production-admin-new-order-")) {
+          adminKeys.push(key);
+          if (adminKeys.length === 1) return new Response("rate limited", { status: 429 });
+        }
+      }
+      return originalFetcher(input, init);
+    };
+    const response = await callApi("/api/orders", { body: orderBody() });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ adminEmailSent: true, emailSent: true });
+    expect(adminKeys).toHaveLength(2);
+    expect(adminKeys[0]).toBe(adminKeys[1]);
+  });
   it("ends at Vancouver midnight and can be disabled", () => {
     const enabled = { ...workerEnv, HOLIDAY_PROMOTION_ENABLED: "true" };
     expect(promotionActive(enabled, Date.parse("2026-12-26T07:59:59.999Z"))).toBe(true);

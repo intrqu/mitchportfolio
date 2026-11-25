@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { createProductionAdminApi, validateProductionAdminConfig } from "./production-admin-api.js";
+import { createProductionAdminApi, validateProductionAdminConfig } from "./production-admin-api.js?v=order-notifications-1";
 
 const error = document.querySelector("#admin-error");
 const success = document.querySelector("#admin-success");
@@ -225,12 +225,27 @@ function renderOrders(orders) {
       appendDetail(article, `Payment confirmed ${formatDate(order.payment_verified_at)}`);
     }
     if (order.message) appendDetail(article, `Message: ${order.message}`);
-    appendDetail(article, `Purchaser email: ${order.order_email_sent_at ? "sent" : "not sent"}`);
-    appendDetail(article, `Admin notification: ${order.admin_email_sent_at ? "sent" : "not sent"}`);
+    appendDetail(article, `Purchaser email: ${order.order_email_sent_at ? "accepted by Resend" : "not yet accepted"}`);
+    appendDetail(article, `Admin notification: ${order.admin_email_sent_at ? "accepted by Resend (delivery not confirmed)" : "not yet accepted"}`);
     if (order.created_at) appendDetail(article, `Ordered ${formatDate(order.created_at)}`);
 
     const actions = document.createElement("div");
     actions.className = "admin-actions";
+    actions.append(actionButton("Resend admin notification", async () => {
+      const storageKey = `mhtAdminNotificationResend-${order.id}`;
+      let requestId = sessionStorage.getItem(storageKey);
+      if (!isUuid(requestId)) {
+        requestId = crypto.randomUUID();
+        sessionStorage.setItem(storageKey, requestId);
+      }
+      const result = await api.call("resendAdminNotification", { orderId: order.id, requestId });
+      if (result.adminEmailSent) {
+        sessionStorage.removeItem(storageKey);
+        showMessage("Resend accepted the admin notification. Check Resend for delivery status.");
+      } else {
+        showError(new Error("The admin notification was not accepted. Retry after checking the email service."));
+      }
+    }));
     if (order.archived_at) {
       appendDetail(article, `Archived ${formatDate(order.archived_at)}`);
       actions.append(archiveButton(order, false), deleteButton(order));
