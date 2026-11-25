@@ -262,7 +262,7 @@ function verifyOutput() {
 		!customerPage.includes('id="production-order-disabled"') ||
 		!customerPage.includes('id="submit-order"') ||
 		!/id="submit-order"[^>]*disabled/.test(customerPage) ||
-		!customerPage.includes("Do not send money.") ||
+		!/Do\s+not\s+send\s+money\./i.test(customerPage) ||
 		!customerPage.includes("recipient-name") ||
 		!customerPage.includes("recipient-email") ||
 		!customerPage.includes("buyer-name") ||

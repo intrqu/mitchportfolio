@@ -40,12 +40,12 @@ function setPromotion(active) {
 		const bonus = Math.floor(cents / 10000) * 2500;
 		radio.value = String(cents);
 		const label = radio.nextElementSibling;
-		label.querySelector(".preset-price").textContent = formatCurrency(cents);
+		label.querySelector(".preset-price").textContent = formatPresetCurrency(cents);
 		const value = label.querySelector(".preset-value");
-		value.textContent = `${formatCurrency(cents + bonus)} value`;
+		value.textContent = `${formatPresetCurrency(cents + bonus)} value`;
 		value.hidden = !promotionActive;
 		const bonusLabel = label.querySelector(".preset-bonus");
-		bonusLabel.textContent = `+${formatCurrency(bonus)} bonus`;
+		bonusLabel.textContent = `+${formatPresetCurrency(bonus)} bonus`;
 		bonusLabel.hidden = !promotionActive;
 	});
 	updateTotal();
@@ -111,6 +111,15 @@ function formatCurrency(cents) {
 	return new Intl.NumberFormat("en-CA", {
 		style: "currency",
 		currency: "CAD",
+	}).format(cents / 100);
+}
+
+function formatPresetCurrency(cents) {
+	return new Intl.NumberFormat("en-CA", {
+		style: "currency",
+		currency: "CAD",
+		minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+		maximumFractionDigits: 2,
 	}).format(cents / 100);
 }
 
