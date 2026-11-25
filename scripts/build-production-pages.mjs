@@ -326,7 +326,7 @@ function checkLocalReferences(html, page) {
 	const references = [...html.matchAll(/\b(?:href|src)=["']([^"'#]+)["']/gi)];
 	for (const [, reference] of references) {
 		if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(reference)) continue;
-		const target = path.resolve(output, path.dirname(page), reference);
+		const target = path.resolve(output, path.dirname(page), reference.split("?")[0]);
 		if (
 			(target !== output && !target.startsWith(`${output}${path.sep}`)) ||
 			!existsSync(target)

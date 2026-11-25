@@ -34,8 +34,19 @@ function setPromotion(active) {
 	document.querySelector("#holiday-promotion").hidden = !promotionActive;
 	document.querySelector("#holiday-sidebar").hidden = !promotionActive;
 	document.querySelector("#bonus-row").hidden = !promotionActive;
-	form.querySelectorAll(".preset-bonus").forEach((label) => {
-		label.hidden = !promotionActive;
+	const amounts = promotionActive ? [10000, 20000, 30000, 50000] : [5000, 10000, 15000, 20000];
+	form.querySelectorAll('input[name="preset"]').forEach((radio, index) => {
+		const cents = amounts[index];
+		const bonus = Math.floor(cents / 10000) * 2500;
+		radio.value = String(cents);
+		const label = radio.nextElementSibling;
+		label.querySelector(".preset-price").textContent = formatCurrency(cents);
+		const value = label.querySelector(".preset-value");
+		value.textContent = `${formatCurrency(cents + bonus)} value`;
+		value.hidden = !promotionActive;
+		const bonusLabel = label.querySelector(".preset-bonus");
+		bonusLabel.textContent = `+${formatCurrency(bonus)} bonus`;
+		bonusLabel.hidden = !promotionActive;
 	});
 	updateTotal();
 }
